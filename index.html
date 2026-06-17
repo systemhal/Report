@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculadora de Costos y Precio Unitario de Importación - Perú</title>
+    <meta name="description" content="Calculadora avanzada de costos de importación y prorrateo de gastos para Perú. Calcula flete, seguro, arancel, IGV, IPM y precio de venta unitario.">
+    <!-- Google Fonts: Outfit (headings) and Inter (body) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- FontAwesome for Premium Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- CSS Custom stylesheet -->
+    <link rel="stylesheet" href="style.css">
+    <!-- Chart.js CDN for interactive visual charts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="icon" href="icono.png" type="image/png">
+</head>
+<body>
+    <!-- Navbar / Header -->
+    <header class="app-header">
+        <div class="logo-container">
+            <img src="icono.png" alt="MSI Peru Cargo Logo" class="logo-img">
+            <div class="logo-text">MSI <span>Calculadora</span></div>
+        </div>
+        <div class="header-tagline">Portal de Costeo - MSI ADUANAS PERÚ CARGO</div>
+        <div class="header-actions">
+            <a href="Calculadora_Importacion.xlsx" class="btn-download-excel" id="btnDownloadExcel" download>
+                <i class="fa-solid fa-file-excel"></i> Descargar Plantilla Excel
+            </a>
+        </div>
+    </header>
+
+    <main class="container">
+        <!-- Hero Section -->
+        <section class="hero">
+            <h1>Calculadora de Precio Unitario de Importación</h1>
+            <p>Optimice sus operaciones de importación en Perú. Distribuya fletes, seguros y gastos locales de despacho aduanero automáticamente entre sus mercancías.</p>
+        </section>
+
+        <!-- Tabs Navigation -->
+        <div class="tabs-container">
+            <button class="tab-btn active" id="tabIndividual" onclick="switchTab('individual')">
+                <i class="fa-solid fa-calculator"></i> Calculadora Individual Rápida
+            </button>
+            <button class="tab-btn" id="tabProrrateo" onclick="switchTab('prorrateo')">
+                <i class="fa-solid fa-table-cells"></i> Prorrateo Multi-Producto
+            </button>
+            <button class="tab-btn" id="tabGuia" onclick="switchTab('guia')">
+                <i class="fa-solid fa-book-open"></i> Guía de Conceptos y Fórmulas
+            </button>
+        </div>
+
+        <!-- TAB 1: INDIVIDUAL CALCULATOR -->
+        <div class="tab-content active" id="contentIndividual">
+            <div class="calculator-grid">
+                <!-- Input Panel -->
+                <div class="panel panel-inputs">
+                    <div class="panel-header">
+                        <h2><i class="fa-solid fa-edit"></i> Datos de la Importación</h2>
+                    </div>
+                    <form id="formIndividual" class="calc-form" onsubmit="event.preventDefault();">
+                        <div class="form-row">
+                            <div class="form-group full-width">
+                                <label for="indProducto"><i class="fa-solid fa-box"></i> Nombre del Producto</label>
+                                <input type="text" id="indProducto" value="Audífonos Bluetooth Premium" required>
+                            </div>
+                        </div>
+
+                        <div class="form-row two-cols">
+                            <div class="form-group">
+                                <label for="indFob"><i class="fa-solid fa-dollar-sign"></i> Valor FOB Total (USD)</label>
+                                <input type="number" id="indFob" value="3500" min="0" step="0.01" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="indCantidad"><i class="fa-solid fa-list-ol"></i> Cantidad (Uds)</label>
+                                <input type="number" id="indCantidad" value="500" min="1" step="1" required>
+                            </div>
+                        </div>
+
+                        <div class="form-row two-cols">
+                            <div class="form-group">
+                                <label for="indPeso"><i class="fa-solid fa-weight-hanging"></i> Peso Neto Total (kg)</label>
+                                <input type="number" id="indPeso" value="85" min="0" step="0.01" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="indVolumen"><i class="fa-solid fa-cube"></i> Volumen Total (CBM / m³)</label>
+                                <input type="number" id="indVolumen" value="0.65" min="0" step="0.01" required>
+                            </div>
+                        </div>
+
+                        <div class="form-row two-cols">
+                            <div class="form-group">
+                                <label for="indTransporte"><i class="fa-solid fa-ship"></i> Tipo de Transporte</label>
+                                <select id="indTransporte">
+                                    <option value="maritimo" selected>Marítimo (LCL)</option>
+                                    <option value="aereo">Aéreo</option>
+                                </select>
+                                <span class="input-info-text" id="indTarifaInfo">Tarifa: $110.00 / CBM o $130.00 / Ton</span>
+                            </div>
+                            <div class="form-group">
+                                <label for="indOrigen"><i class="fa-solid fa-globe"></i> Origen</label>
+                                <select id="indOrigen">
+                                    <option value="china" selected>China (Asia)</option>
+                                    <option value="eeuu">Estados Unidos</option>
+                                    <option value="europa">Europa</option>
+                                    <option value="otros">Otros</option>
+                                </select>
+                                <span class="input-info-text" id="indOrigenInfo">Recargo: Ninguno (+0%)</span>
+                            </div>
+                        </div>
+
+                        <div class="form-row two-cols">
+                            <div class="form-group">
+                                <label for="indArancel"><i class="fa-solid fa-percent"></i> Arancel Ad-Valorem (%)</label>
+                                <select id="indArancel">
+                                    <option value="0.00">0% (Libre / TLC)</option>
+                                    <option value="0.04">4% (Mercancía específica)</option>
+                                    <option value="0.06" selected>6% (Tasa estándar)</option>
+                                    <option value="0.11">11% (Tasa alta)</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="indPercepcion"><i class="fa-solid fa-piggy-bank"></i> Percepción IGV SUNAT</label>
+                                <select id="indPercepcion">
+                                    <option value="0.035" selected>Frecuente (3.5%)</option>
+                                    <option value="0.10">Primera Importación (10%)</option>
+                                    <option value="0.05">Bienes Usados (5%)</option>
+                                    <option value="0.00">No aplica (0%)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-row two-cols border-top">
+                            <div class="form-group">
+                                <label for="indMargen"><i class="fa-solid fa-chart-line"></i> Margen Deseado (%)</label>
+                                <input type="number" id="indMargen" value="35" min="0" max="99" step="1" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="indTipoCambio"><i class="fa-solid fa-coins"></i> Tipo de Cambio (S/.)</label>
+                                <input type="number" id="indTipoCambio" value="3.78" min="1" step="0.001" required>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Results Panel -->
+                <div class="panel panel-results">
+                    <div class="panel-header">
+                        <h2><i class="fa-solid fa-chart-pie"></i> Resultados del Cálculo</h2>
+                    </div>
+                    
+                    <div class="result-cards-container">
+                        <!-- Key Outputs -->
+                        <div class="key-results">
+                            <div class="key-card primary">
+                                <span class="card-label">Costo Unitario en Almacén</span>
+                                <span class="card-value" id="resIndCostoUnitUsd">USD 0.00</span>
+                                <span class="card-subvalue" id="resIndCostoUnitPen">S/. 0.00</span>
+                                <span class="formula-help">Fórmula: (CIF + Arancel + Gastos Locales) / Cantidad</span>
+                            </div>
+                            <div class="key-card success">
+                                <span class="card-label">Precio Sugerido Venta (Sin IGV)</span>
+                                <span class="card-value" id="resIndPrecioVentaUsd">USD 0.00</span>
+                                <span class="card-subvalue" id="resIndPrecioVentaPen">S/. 0.00</span>
+                                <span class="formula-help">Fórmula: Costo Unitario / (1 - Margen Deseado %)</span>
+                            </div>
+                        </div>
+
+                        <!-- Cost Breakdown Accordion -->
+                        <div class="breakdown-details">
+                            <h3>Desglose Aduanero e Impuestos</h3>
+                            <div class="detail-item">
+                                <div class="detail-label-container">
+                                    <span>Flete Internacional:</span>
+                                    <span class="formula-help">Fórmula: Máx (Volumen x $110, Peso x $130) + Recargo</span>
+                                </div>
+                                <span class="val" id="resIndFlete">USD 0.00</span>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label-container">
+                                    <span>Seguro de Aduanas (1.5%):</span>
+                                    <span class="formula-help">Fórmula: (FOB + Flete) x 1.5%</span>
+                                </div>
+                                <span class="val" id="resIndSeguro">USD 0.00</span>
+                            </div>
+                            <div class="detail-item highlight">
+                                <div class="detail-label-container">
+                                    <span>Valor CIF (Aduanas):</span>
+                                    <span class="formula-help">Fórmula: FOB + Flete + Seguro</span>
+                                </div>
+                                <span class="val" id="resIndCif">USD 0.00</span>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label-container">
+                                    <span>Arancel Ad-Valorem:</span>
+                                    <span class="formula-help">Fórmula: Valor CIF x Arancel %</span>
+                                </div>
+                                <span class="val" id="resIndAdvalorem">USD 0.00</span>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label-container">
+                                    <span>IGV (16%) + IPM (2%):</span>
+                                    <span class="formula-help">Fórmula: (Valor CIF + Arancel) x 18%</span>
+                                </div>
+                                <span class="val" id="resIndIgvIpm">USD 0.00</span>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label-container">
+                                    <span>Gastos Operativos Locales (Fijos):</span>
+                                    <span class="formula-help">Fórmula: Comisión Agente (mín. $200) + Gastos Fijos ($675)</span>
+                                </div>
+                                <span class="val" id="resIndGastosLocales">USD 0.00</span>
+                            </div>
+                            <div class="detail-item alert-item">
+                                <div class="detail-label-container">
+                                    <span>Percepción IGV (Crédito Fiscal):</span>
+                                    <span class="formula-help">Fórmula: (CIF + Arancel + IGV+IPM) x Percepción %</span>
+                                </div>
+                                <span class="val" id="resIndPercepcionVal">USD 0.00</span>
+                            </div>
+                            <div class="detail-item total-summary">
+                                <div class="detail-label-container">
+                                    <span>Desembolso de Caja Total:</span>
+                                    <span class="formula-help">Fórmula: Costo en Almacén + IGV+IPM + Percepción</span>
+                                </div>
+                                <span class="val" id="resIndCajaTotal">USD 0.00</span>
+                            </div>
+                        </div>
+
+                        <!-- Visual Chart -->
+                        <div class="chart-box">
+                            <canvas id="indChart" width="200" height="200"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 2: MULTI-PRODUCT PRORATING -->
+        <div class="tab-content" id="contentProrrateo">
+            <div class="prorrateo-container">
+                <!-- Global Invoices Panel -->
+                <div class="panel panel-invoice-totals">
+                    <div class="panel-header">
+                        <h2><i class="fa-solid fa-file-invoice-dollar"></i> Costos Generales de la Carga a Prorratear</h2>
+                    </div>
+                    <div class="invoice-inputs-row">
+                        <div class="form-group">
+                            <label for="proFleteFactura"><i class="fa-solid fa-ship"></i> Flete Internacional (USD)</label>
+                            <input type="number" id="proFleteFactura" value="1850" min="0" step="0.01">
+                        </div>
+                        <div class="form-group">
+                            <label for="proSeguroFactura"><i class="fa-solid fa-shield-halved"></i> Seguro General (USD)</label>
+                            <input type="number" id="proSeguroFactura" value="125" min="0" step="0.01">
+                        </div>
+                        <div class="form-group">
+                            <label for="proGastosLocales"><i class="fa-solid fa-truck-ramp-box"></i> Gastos Locales Despacho (USD)</label>
+                            <input type="number" id="proGastosLocales" value="890" min="0" step="0.01">
+                        </div>
+                        <div class="form-group">
+                            <label for="proMetodoFlete"><i class="fa-solid fa-scale-balanced"></i> Prorratear Flete Por</label>
+                            <select id="proMetodoFlete">
+                                <option value="volumen" selected>Volumen (CBM)</option>
+                                <option value="peso">Peso (kg)</option>
+                                <option value="fob">Valor FOB (USD)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="proPercepcionTasa"><i class="fa-solid fa-percent"></i> Percepción Tasa</label>
+                            <select id="proPercepcionTasa">
+                                <option value="0.035" selected>3.5% (Habitual)</option>
+                                <option value="0.10">10% (Primera Vez)</option>
+                                <option value="0.05">5% (Usados)</option>
+                                <option value="0.00">0% (Ninguno)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="proTipoCambio"><i class="fa-solid fa-money-bill-transfer"></i> Tipo de Cambio (S/.)</label>
+                            <input type="number" id="proTipoCambio" value="3.78" min="1" step="0.001">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Products Table Panel -->
+                <div class="panel panel-table">
+                    <div class="panel-header table-actions-header">
+                        <h2><i class="fa-solid fa-boxes-stacked"></i> Detalle de Ítems en el Embarque</h2>
+                        <button type="button" class="btn-secondary" id="btnAddRow" onclick="addProductRow()">
+                            <i class="fa-solid fa-plus"></i> Agregar Producto
+                        </button>
+                    </div>
+
+                    <div class="table-wrapper">
+                        <table class="prorrateo-table" id="tableProducts">
+                            <thead>
+                                <tr>
+                                    <th class="col-actions">Acción</th>
+                                    <th class="col-sku">SKU / Cód</th>
+                                    <th class="col-desc">Descripción</th>
+                                    <th class="col-qty">Cant. (Uds)</th>
+                                    <th class="col-fob">FOB Unit (USD)</th>
+                                    <th class="col-peso">Peso Unit (kg)</th>
+                                    <th class="col-vol">Vol Unit (CBM)</th>
+                                    <th class="col-arancel">Ad-Val. %</th>
+                                    <th class="col-margen">Margen %</th>
+                                    <th class="col-fob-tot">FOB Total</th>
+                                    <th class="col-cost-unit highlighted-col">Costo Unit Alm</th>
+                                    <th class="col-venta highlighted-col">P. Venta PEN</th>
+                                    <th class="col-util">Utilidad Est.</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tableBodyProducts">
+                                <!-- Dynamic rows go here -->
+                            </tbody>
+                            <tfoot>
+                                <tr class="total-row">
+                                    <td>TOTALES</td>
+                                    <td></td>
+                                    <td></td>
+                                    <td id="totQty" class="text-right">0</td>
+                                    <td></td>
+                                    <td id="totPeso" class="text-right">0.00 kg</td>
+                                    <td id="totVol" class="text-right">0.00 CBM</td>
+                                    <td></td>
+                                    <td></td>
+                                    <td id="totFob" class="text-right">$0.00</td>
+                                    <td></td>
+                                    <td></td>
+                                    <td id="totUtil" class="text-right">$0.00</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Multi-Product Results Summary -->
+                <div class="multi-results-summary">
+                    <div class="panel summary-card">
+                        <h3>Resumen Económico General</h3>
+                        <div class="summary-details">
+                            <div class="summary-item">
+                                <div class="detail-label-container">
+                                    <span>FOB Mercancías:</span>
+                                    <span class="formula-help">Fórmula: Suma del FOB total de todos los productos</span>
+                                </div>
+                                <strong id="sumFob">$0.00</strong>
+                            </div>
+                            <div class="summary-item">
+                                <div class="detail-label-container">
+                                    <span>Flete Internacional:</span>
+                                    <span class="formula-help">Fórmula: Flete general del embarque ingresado arriba</span>
+                                </div>
+                                <strong id="sumFlete">$0.00</strong>
+                            </div>
+                            <div class="summary-item">
+                                <div class="detail-label-container">
+                                    <span>Seguro Internacional:</span>
+                                    <span class="formula-help">Fórmula: Seguro general del embarque ingresado arriba</span>
+                                </div>
+                                <strong id="sumSeguro">$0.00</strong>
+                            </div>
+                            <div class="summary-item highlight">
+                                <div class="detail-label-container">
+                                    <span>Valor CIF Aduanas:</span>
+                                    <span class="formula-help">Fórmula: FOB Mercancías + Flete + Seguro</span>
+                                </div>
+                                <strong id="sumCif">$0.00</strong>
+                            </div>
+                            <div class="summary-item">
+                                <div class="detail-label-container">
+                                    <span>Derechos Ad-Valorem:</span>
+                                    <span class="formula-help">Fórmula: Suma de los aranceles calculados de cada ítem</span>
+                                </div>
+                                <strong id="sumAdvalorem">$0.00</strong>
+                            </div>
+                            <div class="summary-item">
+                                <div class="detail-label-container">
+                                    <span>Gastos Locales Despacho:</span>
+                                    <span class="formula-help">Fórmula: Gastos locales de despacho ingresados arriba</span>
+                                </div>
+                                <strong id="sumGastosLocales">$0.00</strong>
+                            </div>
+                            <div class="summary-item highlight-cost">
+                                <div class="detail-label-container">
+                                    <span>Costo Real en Almacén:</span>
+                                    <span class="formula-help">Fórmula: Valor CIF + Aranceles + Gastos Locales</span>
+                                </div>
+                                <strong id="sumCostoAlmacen">$0.00</strong>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="panel summary-card">
+                        <h3>Impuestos y Finanzas</h3>
+                        <div class="summary-details">
+                            <div class="summary-item">
+                                <div class="detail-label-container">
+                                    <span>IGV (16%) + IPM (2%):</span>
+                                    <span class="formula-help">Fórmula: Suma del IGV+IPM calculado de cada ítem</span>
+                                </div>
+                                <strong id="sumIgvIpm">$0.00</strong>
+                            </div>
+                            <div class="summary-item alert-color">
+                                <div class="detail-label-container">
+                                    <span>Percepción IGV SUNAT:</span>
+                                    <span class="formula-help">Fórmula: Suma de percepciones individuales de cada ítem</span>
+                                </div>
+                                <strong id="sumPercepcion">$0.00</strong>
+                            </div>
+                            <div class="summary-item highlight-box">
+                                <div class="detail-label-container">
+                                    <span>Caja para Desaduanar:</span>
+                                    <span class="formula-help">Fórmula: Costo en Almacén + IGV+IPM + Percepción</span>
+                                </div>
+                                <strong id="sumCajaTotal">$0.00</strong>
+                            </div>
+                            <div class="summary-item highlight-profit">
+                                <div class="detail-label-container">
+                                    <span>Utilidad Comercial Proyectada:</span>
+                                    <span class="formula-help">Fórmula: Suma de utilidades netas de todos los ítems</span>
+                                </div>
+                                <strong id="sumUtilidad">$0.00</strong>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="panel summary-card chart-card">
+                        <h3>Composición del Costo Landed</h3>
+                        <div class="chart-box">
+                            <canvas id="multiChart" width="180" height="180"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 3: EXPLANATORY GUIDE -->
+        <div class="tab-content" id="contentGuia">
+            <div class="panel guide-panel">
+                <div class="guide-header">
+                    <h2><i class="fa-solid fa-book-open"></i> Guía Completa de Conceptos y Costeo Aduanero (SUNAT)</h2>
+                    <p>Encuentre aquí la descripción técnica de cada campo utilizado en la **Pestaña Principal (Individual)** y en la **Pestaña de Prorrateo**, así como el detalle de sus cálculos.</p>
+                </div>
+                
+                <div class="guide-sections-wrapper">
+                    <!-- Sección A: Calculadora Principal (Individual) -->
+                    <div class="guide-section">
+                        <h3><i class="fa-solid fa-calculator"></i> 1. Pestaña Principal: Calculadora Individual Rápida</h3>
+                        <p class="section-intro-text">Esta pestaña sirve para cotizar un único producto de forma rápida. Los campos que interactúan y sus desgloses son:</p>
+                        
+                        <div class="guide-grid-three">
+                            <div class="guide-card">
+                                <h5>FOB (Input)</h5>
+                                <p>El valor de compra de tu producto en la fábrica o puerto de origen (según factura comercial, sin incluir flete ni seguro).</p>
+                            </div>
+                            <div class="guide-card">
+                                <h5>Flete Internacional (Calculado)</h5>
+                                <p>Costo del pasaje del contenedor. El sistema compara volumen vs peso de la carga y cobra el mayor.
+                                <br><strong>Fórmula:</strong> <code>Máx(Vol CBM x $110, Peso Ton x $130) x Recargo Origen</code></p>
+                            </div>
+                            <div class="guide-card">
+                                <h5>Seguro de Aduanas (Calculado)</h5>
+                                <p>Tasa del 1.5% que SUNAT estima obligatoriamente para la liquidación de impuestos en caso de no contar con póliza propia.
+                                <br><strong>Fórmula:</strong> <code>(FOB + Flete) x 1.5%</code></p>
+                            </div>
+                            <div class="guide-card">
+                                <h5>Valor CIF (Calculado)</h5>
+                                <p>Es el valor de aduanas que sirve como base imponible. Ningún impuesto se calcula directamente sobre el FOB de origen.
+                                <br><strong>Fórmula:</strong> <code>FOB + Flete + Seguro</code></p>
+                            </div>
+                            <div class="guide-card">
+                                <h5>Impuestos (Arancel + IGV/IPM)</h5>
+                                <p>Los aranceles (Ad-Valorem de 0%, 4%, 6% u 11%) y el IGV + IPM (18%) que cobra SUNAT al ingresar la mercadería.
+                                <br><strong>Fórmula:</strong> <code>CIF x Arancel%</code> y <code>(CIF + Arancel) x 18%</code></p>
+                            </div>
+                            <div class="guide-card">
+                                <h5>Costo en Almacén (Tarjeta Roja)</h5>
+                                <p>El costo real de cada unidad puesta en tu tienda. Excluye el IGV y la Percepción por ser créditos fiscales que recuperarás después.
+                                <br><strong>Fórmula:</strong> <code>(CIF + Arancel + Gastos Locales) / Cantidad</code></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Sección B: Prorrateo Multi-Producto -->
+                    <div class="guide-section">
+                        <h3><i class="fa-solid fa-table-cells"></i> 2. Pestaña de Prorrateo: Distribución Multi-Producto</h3>
+                        <p class="section-intro-text">Esta pestaña sirve para dividir equitativamente los gastos generales de una factura de consolidación o contenedor completo entre múltiples productos (SKU). Sus campos clave son:</p>
+                        
+                        <div class="guide-grid-three">
+                            <div class="guide-card">
+                                <h5>Flete Internacional Facturado</h5>
+                                <p>El costo global de flete cobrado por MSI Cargo. Se puede prorratear (repartir) de tres formas seleccionables en el sistema:</p>
+                                <ul>
+                                    <li><strong>Por Volumen (CBM):</strong> Distribuye proporcionalmente según el volumen ocupado por cada SKU.</li>
+                                    <li><strong>Por Peso (kg):</strong> Distribuye según el peso físico de cada producto.</li>
+                                    <li><strong>Por Valor FOB (USD):</strong> Distribuye el flete según el valor de facturación de los productos.</li>
+                                </ul>
+                            </div>
+                            <div class="guide-card">
+                                <h5>Seguro Internacional Facturado</h5>
+                                <p>El monto total del seguro pagado. Se distribuye proporcionalmente al **Valor FOB** de cada producto (práctica estándar internacional).</p>
+                            </div>
+                            <div class="guide-card">
+                                <h5>Gastos Locales Despacho</h5>
+                                <p>El costo local cobrado en el Callao. Se reparte proporcionalmente según el **Valor FOB** de cada ítem importado.</p>
+                            </div>
+                            <div class="guide-card">
+                                <h5>Arancel por SKU (Ad-Val. %)</h5>
+                                <p>Permite registrar una tasa de Ad-Valorem individual para cada fila de producto, ya que en un mismo contenedor cada artículo puede pagar tasas arancelarias distintas.</p>
+                            </div>
+                            <div class="guide-card">
+                                <h5>Costo Unitario en Almacén (SKU)</h5>
+                                <p>Calcula el Landed Cost unitario real de cada producto tras recibir su porción proporcional de flete, seguro y gastos locales (excluyendo IGV).
+                                <br><strong>Fórmula:</strong> <code>CIF Asignado + Arancel Individual + Gastos Locales Asignados</code></p>
+                            </div>
+                            <div class="guide-card">
+                                <h5>Precio Sugerido de Venta (SKU)</h5>
+                                <p>El precio recomendado de venta en Soles (sin IGV) para cada producto de la tabla según su margen individual deseado.
+                                <br><strong>Fórmula:</strong> <code>Costo Unitario / (1 - Margen Individual %) x Tipo de Cambio</code></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Sección C: Resúmenes y Finanzas -->
+                    <div class="guide-section highlight-section">
+                        <h3><i class="fa-solid fa-scale-balanced"></i> 3. Conceptos Financieros y Crédito Fiscal</h3>
+                        <div class="guide-dual-box">
+                            <div class="guide-box">
+                                <h5>Crédito Fiscal (¿Por qué el IGV y la Percepción no van al costo?)</h5>
+                                <p>En aduanas peruanas, el IGV (16%), el IPM (2%) y la Percepción (3.5% o 10%) constituyen un **Crédito Fiscal** neto a favor de la empresa importadora. Esto significa que cuando vendas tus productos en el Perú y cobres el IGV de las ventas a tus clientes, deducirás todo el IGV que ya pagaste por adelantado en la aduana, recuperando ese dinero. Cargar estos impuestos recuperables directamente al costo del producto inflaría falsamente tu inventario y te obligaría a fijar precios de venta exageradamente altos en el mercado.</p>
+                            </div>
+                            <div class="guide-box">
+                                <h5>Caja para Desaduanar vs. Costo en Almacén</h5>
+                                <p>Es importante diferenciar la liquidez que necesitas hoy en el banco frente al costo real de tu inventario:
+                                <br>• **Costo en Almacén (Costo Real)**: Es lo que vale comercialmente tu mercadería ingresada en almacén (CIF + Arancel + Gastos Locales).
+                                <br>• **Caja para Desaduanar (Efectivo necesario)**: Es el total de dinero en efectivo que necesitas tener en tu cuenta bancaria hoy para pagar al fabricante, transportista, puerto e impuestos a la aduana antes del desaduanamiento (Costo en Almacén + IGV+IPM + Percepción).</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+        <p>&copy; 2026 ImportCalc - Herramienta Profesional de Costeo de Importaciones. Todos los derechos reservados.</p>
+        <p class="footer-note">Nota: Los cálculos presentados son simulaciones comerciales basadas en las normativas aduaneras vigentes en el Perú. Los costos finales de flete local y almacenamiento pueden variar según su operador logístico.</p>
+    </footer>
+
+    <!-- Script Lógico -->
+    <script src="script.js"></script>
+</body>
+</html>
