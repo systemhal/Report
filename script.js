@@ -19,7 +19,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Client view input IDs (Quantity and Margin reallocated to Admin)
     const clientInputIds = [
-        "indCliente", "indProducto", "indValorMercancia", "indPeso", "indVolumen", "indIncoterm", "indTransporte", "indOrigen"
+        "indCliente", "indProducto", "indValorMercancia", "indPeso", "indVolumen", "indIncoterm", "indTransporte", "indOrigen", "indCantidad"
     ];
     
     // Admin tariff input IDs
@@ -28,14 +28,20 @@ document.addEventListener("DOMContentLoaded", () => {
         "admSeguroComercial", "admDocFee", "admDescargaTn", "admVistoBueno",
         "admTransporteInterno", "admAlmacenajeVerde", "admVistoBuenoLinea", 
         "admGateIn", "admDescargaPuerto", "admComisionAduana", "admGastosOperativos",
-        "admArancel", "admPercepcion", "admTipoCambio", "indCantidad", "indMargen",
+        "admArancel", "admPercepcion", "admTipoCambio", "indMargen",
         "admPdfEmpresa", "admPdfSub1", "admPdfSub2", "admPdfBancoSoles", "admPdfBancoSolesCci",
         "admPdfBancoDolares", "admPdfBancoDolaresCci", "admPdfBancoRuc", "admPdfBancoRazon",
-        "admPdfAsesorNombre", "admPdfAsesorCargo", "admPdfTerminos"
+        "admPdfAsesorNombre", "admPdfAsesorCargo", "admPdfTerminos", "admGoogleSheetUrl"
     ];
 
     // Load saved tariffs from localStorage
     loadTariffs();
+
+    // Default URL fallback if empty
+    const sheetUrlEl = document.getElementById("admGoogleSheetUrl");
+    if (sheetUrlEl && sheetUrlEl.value.trim() === "") {
+        sheetUrlEl.value = "https://script.google.com/macros/s/AKfycbwVrfInmX4xf_Ig-MlodgnUx8K9nbvS255bdL7_PlOduaLbdQW8Pl1dXNVfTOEO5Vow/exec";
+    }
 
     // Bind event listeners to Client inputs
     clientInputIds.forEach(id => {
@@ -69,8 +75,13 @@ document.addEventListener("DOMContentLoaded", () => {
     // Render the recent history table
     renderHistoryTable();
 
-    // Initialize the calculation
+    // Calculate immediately with local values first (improves page load UX)
     calculateIndividual();
+
+    // Auto-fetch from Google Sheet silently if URL exists
+    if (sheetUrlEl && sheetUrlEl.value.trim() !== "") {
+        fetchFromGoogleSheet(true); 
+    }
 });
 
 // Tab Switcher
@@ -127,26 +138,11 @@ function calculateIndividual() {
     const tc = parseFloat(document.getElementById("admTipoCambio").value) || 3.78;
 
     // 3. Flete Internacional Base Calculation (with weight/volume minimums / flat rates)
-    let flete_base = 0;
     if (transporte === "maritimo") {
-        // Minimums: 1 CBM and 1 Ton (1000 kg)
-        const cbm_calculado = Math.max(cbm, 1.0);
-        const peso_calculado_tn = Math.max(peso_kg, 1000.0) / 1000.0; // Convert to tons
-        flete_base = Math.max(cbm_calculado, peso_calculado_tn) * flete_tarifa_cbm;
-        
-        // Update info text
         document.getElementById("indTarifaInfo").textContent = `Tarifa LCL: $${flete_tarifa_cbm.toFixed(2)} / CBM o Ton`;
     } else if (transporte === "maritimo_fcl") {
-        // Flat rate per container
-        flete_base = flete_tarifa_fcl;
-        
-        // Update info text
         document.getElementById("indTarifaInfo").textContent = `Tarifa FCL Flat: $${flete_tarifa_fcl.toFixed(2)} / Contenedor`;
     } else {
-        // Air freight: peso_kg * rate
-        flete_base = peso_kg * flete_aereo_rate;
-        
-        // Update info text
         document.getElementById("indTarifaInfo").textContent = `Tarifa Aérea: $${flete_aereo_rate.toFixed(2)} / kg`;
     }
 
@@ -161,92 +157,127 @@ function calculateIndividual() {
         recargo_text = "Recargo flete: +10% (EEUU)";
     }
     document.getElementById("indOrigenInfo").textContent = recargo_text;
-    
-    let flete_comercial = flete_base * recargo_factor;
 
-    // 5. FOB Aduanero Calculation
-    let fob = mercancia;
-    if (incoterm === "EXW") {
-        // Under EXW, origin expenses (BL Fee + Pick Up + Origin) are added to FOB
-        fob = mercancia + bl_fee + pick_up + gastos_origen;
-    }
+    // Check if we have active cargo inputs to calculate costs
+    const hasCargo = (mercancia > 0 || peso_kg > 0 || cbm > 0);
 
-    // 6. Flete Internacional Aduanero
+    let flete_base = 0;
+    let flete_comercial = 0;
+    let fob = 0;
     let flete_aduanero = 0;
-    if (incoterm === "EXW" || incoterm === "FOB") {
-        flete_aduanero = flete_comercial;
-    } else {
-        flete_comercial = 0; // Pre-paid in CIF
-    }
-
-    // 7. Seguro de Aduanas (1.5% of FOB)
     let seguro_aduanero = 0;
-    if (incoterm === "EXW" || incoterm === "FOB") {
-        seguro_aduanero = fob * 0.015;
-    }
-
-    // 8. Valor CIF (Base Imponible)
-    const cif = fob + flete_aduanero + seguro_aduanero;
-
-    // 9. Impuestos de Aduana (SUNAT)
-    const arancel = cif * arancel_rate;
-    const igv = (cif + arancel) * 0.16;
-    const ipm = (cif + arancel) * 0.02;
-    const derechos_aduaneros = arancel + igv + ipm;
-    
-    const base_percepcion = cif + derechos_aduaneros;
-    const percepcion = base_percepcion * percepcion_rate;
-    const impuestos_totales = derechos_aduaneros + percepcion;
-
-    // 10. Servicios Logísticos MSI
-    const bl_fee_comercial = (incoterm === "EXW") ? bl_fee : 0;
-    const pick_up_comercial = (incoterm === "EXW") ? pick_up : 0;
-    const gastos_origen_comercial = (incoterm === "EXW") ? gastos_origen : 0;
-
-    // Conditional local services depending on transport
+    let cif = 0;
+    let arancel = 0;
+    let igv = 0;
+    let ipm = 0;
+    let derechos_aduaneros = 0;
+    let percepcion = 0;
+    let impuestos_totales = 0;
+    let bl_fee_comercial = 0;
+    let pick_up_comercial = 0;
+    let gastos_origen_comercial = 0;
     let doc_fee_comercial = 0;
     let descarga_comercial = 0;
     let visto_bueno_lcl_comercial = 0;
     let almacenaje_lcl_comercial = 0;
-    
     let visto_bueno_fcl_comercial = 0;
     let gate_in_fcl_comercial = 0;
     let descarga_puerto_fcl_comercial = 0;
+    let servicios_origen_total = 0;
+    let servicios_destino_gravados = 0;
+    let igv_servicios = 0;
+    let servicios_logicos_totales = 0;
+    let costo_total = 0;
+    let unit_landed = 0;
+    let price_net = 0;
 
-    if (transporte === "maritimo") {
-        doc_fee_comercial = doc_fee;
-        const peso_tn = peso_kg / 1000.0;
-        descarga_comercial = descarga_tarifa_tn * Math.max(peso_tn, 1.0);
-        visto_bueno_lcl_comercial = visto_bueno;
-        almacenaje_lcl_comercial = almacenaje_verde;
-    } else if (transporte === "maritimo_fcl") {
-        doc_fee_comercial = doc_fee;
-        visto_bueno_fcl_comercial = visto_bueno_linea;
-        gate_in_fcl_comercial = gate_in;
-        descarga_puerto_fcl_comercial = descarga_puerto;
+    if (hasCargo) {
+        // Calculate international freight based on transport type
+        if (transporte === "maritimo") {
+            // Minimums: 1 CBM and 1 Ton (1000 kg)
+            const cbm_calculado = Math.max(cbm, 1.0);
+            const peso_calculado_tn = Math.max(peso_kg, 1000.0) / 1000.0;
+            flete_base = Math.max(cbm_calculado, peso_calculado_tn) * flete_tarifa_cbm;
+        } else if (transporte === "maritimo_fcl") {
+            flete_base = flete_tarifa_fcl;
+        } else {
+            flete_base = peso_kg * flete_aereo_rate;
+        }
+
+        flete_comercial = flete_base * recargo_factor;
+
+        // 5. FOB Aduanero Calculation
+        fob = mercancia;
+        if (incoterm === "EXW") {
+            fob = mercancia + bl_fee + pick_up + gastos_origen;
+        }
+
+        // 6. Flete Internacional Aduanero
+        if (incoterm === "EXW" || incoterm === "FOB") {
+            flete_aduanero = flete_comercial;
+        } else {
+            flete_comercial = 0; // Pre-paid in CIF
+        }
+
+        // 7. Seguro de Aduanas (1.5% of FOB)
+        if (incoterm === "EXW" || incoterm === "FOB") {
+            seguro_aduanero = fob * 0.015;
+        }
+
+        // 8. Valor CIF (Base Imponible)
+        cif = fob + flete_aduanero + seguro_aduanero;
+
+        // 9. Impuestos de Aduana (SUNAT)
+        arancel = cif * arancel_rate;
+        igv = (cif + arancel) * 0.16;
+        ipm = (cif + arancel) * 0.02;
+        derechos_aduaneros = arancel + igv + ipm;
+        
+        const base_percepcion = cif + derechos_aduaneros;
+        percepcion = base_percepcion * percepcion_rate;
+        impuestos_totales = derechos_aduaneros + percepcion;
+
+        // 10. Servicios Logísticos MSI
+        bl_fee_comercial = (incoterm === "EXW") ? bl_fee : 0;
+        pick_up_comercial = (incoterm === "EXW") ? pick_up : 0;
+        gastos_origen_comercial = (incoterm === "EXW") ? gastos_origen : 0;
+
+        if (transporte === "maritimo") {
+            doc_fee_comercial = doc_fee;
+            const peso_tn = peso_kg / 1000.0;
+            descarga_comercial = descarga_tarifa_tn * Math.max(peso_tn, 1.0);
+            visto_bueno_lcl_comercial = visto_bueno;
+            almacenaje_lcl_comercial = almacenaje_verde;
+        } else if (transporte === "maritimo_fcl") {
+            doc_fee_comercial = doc_fee;
+            visto_bueno_fcl_comercial = visto_bueno_linea;
+            gate_in_fcl_comercial = gate_in;
+            descarga_puerto_fcl_comercial = descarga_puerto;
+        }
+
+        servicios_origen_total = bl_fee_comercial + pick_up_comercial + gastos_origen_comercial;
+        
+        servicios_destino_gravados = seguro_comercial + doc_fee_comercial + descarga_comercial + visto_bueno_lcl_comercial +
+                                     transporte_interno + comision_aduana + gastos_operativos +
+                                     almacenaje_lcl_comercial + visto_bueno_fcl_comercial + gate_in_fcl_comercial + descarga_puerto_fcl_comercial;
+                                          
+        igv_servicios = servicios_destino_gravados * 0.18;
+        const total_servicios_sin_igv = flete_comercial + servicios_origen_total + servicios_destino_gravados;
+        servicios_logicos_totales = total_servicios_sin_igv + igv_servicios;
+
+        costo_total = mercancia + impuestos_totales + servicios_logicos_totales;
+
+        // 11b. Costo Unitario & Precio Sugerido
+        unit_landed = costo_total / cantidad;
+        price_net = margen_comercial < 100 ? (unit_landed / (1 - (margen_comercial / 100))) : unit_landed;
     }
 
-    // Separate services by taxability (under Peruvian law)
-    const servicios_origen_total = bl_fee_comercial + pick_up_comercial + gastos_origen_comercial;
-    
-    // Services gravados (local in Peru)
-    const servicios_destino_gravados = seguro_comercial + doc_fee_comercial + descarga_comercial + visto_bueno_lcl_comercial +
-                                      transporte_interno + comision_aduana + gastos_operativos +
-                                      almacenaje_lcl_comercial + visto_bueno_fcl_comercial + gate_in_fcl_comercial + descarga_puerto_fcl_comercial;
-                                      
-    const igv_servicios = servicios_destino_gravados * 0.18;
-    const total_servicios_sin_igv = flete_comercial + servicios_origen_total + servicios_destino_gravados;
-    const servicios_logicos_totales = total_servicios_sin_igv + igv_servicios;
-
-    const costo_total = mercancia + impuestos_totales + servicios_logicos_totales;
-
-    // 11b. Costo Unitario & Precio Sugerido
-    const unit_landed = costo_total / cantidad;
-    const price_net = margen_comercial < 100 ? (unit_landed / (1 - (margen_comercial / 100))) : unit_landed;
-
     // Update unit analysis elements
-    document.getElementById("resUnitLandedUsd").textContent = formatCurrency(unit_landed, "USD");
-    document.getElementById("resUnitLandedPen").textContent = formatCurrency(unit_landed * tc, "PEN");
+    const resUnitLandedUsdEl = document.getElementById("resUnitLandedUsd");
+    if (resUnitLandedUsdEl) resUnitLandedUsdEl.textContent = formatCurrency(unit_landed, "USD");
+    const resUnitLandedPenEl = document.getElementById("resUnitLandedPen");
+    if (resUnitLandedPenEl) resUnitLandedPenEl.textContent = formatCurrency(unit_landed * tc, "PEN");
+    
     document.getElementById("resUnitPriceUsd").textContent = formatCurrency(price_net, "USD");
     document.getElementById("resUnitPricePen").textContent = formatCurrency(price_net * tc, "PEN");
 
@@ -533,7 +564,10 @@ function saveTariffs() {
         "admSeguroComercial", "admDocFee", "admDescargaTn", "admVistoBueno",
         "admTransporteInterno", "admAlmacenajeVerde", "admVistoBuenoLinea", 
         "admGateIn", "admDescargaPuerto", "admComisionAduana", "admGastosOperativos",
-        "admArancel", "admPercepcion", "admTipoCambio", "indCantidad", "indMargen"
+        "admArancel", "admPercepcion", "admTipoCambio", "indCantidad", "indMargen",
+        "admPdfEmpresa", "admPdfSub1", "admPdfSub2", "admPdfBancoSoles", "admPdfBancoSolesCci",
+        "admPdfBancoDolares", "admPdfBancoDolaresCci", "admPdfBancoRuc", "admPdfBancoRazon",
+        "admPdfAsesorNombre", "admPdfAsesorCargo", "admPdfTerminos", "admGoogleSheetUrl"
     ];
     const tariffs = {};
     adminInputIds.forEach(id => {
@@ -600,7 +634,7 @@ function toggleAdminLogin(event) {
         if (activeTab && (activeTab.id === "tabPersonal" || activeTab.id === "tabGuia")) {
             switchTab("individual");
         }
-        alert("Sesión de administrador cerrada.");
+        showToast("Sesión Cerrada", "La sesión de administrador ha sido cerrada.", "info");
     } else {
         // Toggle Popover
         const popover = document.getElementById("adminLoginPopover");
@@ -635,7 +669,7 @@ function submitAdminLogin() {
             checkAdminLogin();
             if (popover) popover.style.display = "none";
             input.value = "";
-            alert("Acceso concedido. Panel de tarifas y Guía desbloqueados.");
+            showToast("Acceso Concedido", "El Panel MSI y la Guía han sido desbloqueados.", "success");
         } else {
             if (errorMsg) {
                 errorMsg.style.display = "block";
@@ -666,6 +700,14 @@ function saveCurrentQuoteToHistory() {
     const transporte = document.getElementById("indTransporte").value;
     const origen = document.getElementById("indOrigen").value;
     const total = document.getElementById("resTotalImportacionUsd").textContent || "$ 0.00";
+
+    // No guardar cotizaciones que estén vacías (sin valores de carga)
+    const valNum = parseFloat(valorMercancia) || 0;
+    const pesoNum = parseFloat(peso) || 0;
+    const volNum = parseFloat(volumen) || 0;
+    if (valNum === 0 && pesoNum === 0 && volNum === 0) {
+        return;
+    }
 
     const quote = {
         cliente,
@@ -728,6 +770,17 @@ function renderHistoryTable() {
         }
     }
 
+    // Filtrar cotizaciones vacías del historial guardado en localStorage
+    history = history.filter(q => {
+        const val = parseFloat(q.valorMercancia) || 0;
+        const pesoVal = parseFloat(q.peso) || 0;
+        const volVal = parseFloat(q.volumen) || 0;
+        return (val > 0 || pesoVal > 0 || volVal > 0);
+    });
+
+    // Guardar historial limpio
+    localStorage.setItem("msiQuoteHistory", JSON.stringify(history));
+
     if (history.length === 0) {
         tbody.innerHTML = `<tr><td colspan="7" style="padding: 16px; text-align: center; color: var(--text-muted);">No hay cotizaciones registradas en el historial.</td></tr>`;
         return;
@@ -784,7 +837,7 @@ function loadQuoteFromHistory(idx) {
         if (document.getElementById("indOrigen")) document.getElementById("indOrigen").value = q.origen;
 
         calculateIndividual();
-        alert("¡Cotización cargada correctamente!");
+        showToast("Cotización Cargada", "Se restablecieron los datos de la cotización seleccionada.", "success");
         
         switchTab("individual");
     }
@@ -807,18 +860,18 @@ function changeAdminPassword() {
     const confirmPass = document.getElementById("admNewPasswordConfirm").value;
     
     if (!newPass) {
-        alert("Por favor, ingrese la nueva contraseña.");
+        showToast("Campo Requerido", "Por favor, ingrese la nueva contraseña.", "warning");
         return;
     }
     if (newPass !== confirmPass) {
-        alert("Las contraseñas no coinciden. Por favor, verifique.");
+        showToast("Error de Validación", "Las contraseñas no coinciden. Por favor, verifique.", "error");
         return;
     }
     
     localStorage.setItem("msiAdminPassword", newPass);
     document.getElementById("admNewPassword").value = "";
     document.getElementById("admNewPasswordConfirm").value = "";
-    alert("¡Contraseña de administrador actualizada con éxito!");
+    showToast("Contraseña Actualizada", "La contraseña de seguridad ha sido modificada.", "success");
 }
 
 function exportTariffs() {
@@ -850,14 +903,227 @@ function handleImportTariffs(event) {
                 localStorage.setItem("msiTariffs", JSON.stringify(tariffs));
                 loadTariffs();
                 calculateIndividual();
-                alert("¡Tarifas importadas y aplicadas con éxito!");
+                showToast("Tarifas Importadas", "El tarifario local se actualizó correctamente.", "success");
             } else {
-                alert("El archivo no tiene un formato de tarifas válido.");
+                showToast("Archivo Inválido", "El formato del archivo JSON no es compatible.", "error");
             }
         } catch (err) {
-            alert("Error al leer el archivo de tarifas: " + err.message);
+            showToast("Error de Importación", "No se pudo leer el archivo: " + err.message, "error");
         }
     };
     reader.readAsText(file);
     event.target.value = "";
 }
+
+// --------------------------------------------------------------------------
+// GOOGLE SHEETS SYNC FUNCTIONS
+// --------------------------------------------------------------------------
+function fetchFromGoogleSheet(silent = false) {
+    const url = document.getElementById("admGoogleSheetUrl") ? document.getElementById("admGoogleSheetUrl").value.trim() : "";
+    if (!url) {
+        if (!silent) showToast("URL Faltante", "Por favor, ingrese la URL de su Google Apps Script en la sección 9.", "warning");
+        return;
+    }
+
+    if (!silent) {
+        console.log("Iniciando descarga de Google Sheets...");
+    }
+
+    fetch(url)
+        .then(res => {
+            if (!res.ok) throw new Error("Error en la respuesta del servidor: Status " + res.status);
+            return res.json();
+        })
+        .then(data => {
+            // Apply loaded keys to DOM
+            let count = 0;
+            for (const key in data) {
+                const el = document.getElementById(key);
+                if (el) {
+                    el.value = data[key];
+                    count++;
+                }
+            }
+            // Recalculate and save to localStorage
+            calculateIndividual();
+            
+            if (!silent) {
+                showToast("Sincronización Exitosa", "Se cargaron " + count + " variables desde el Google Sheet.", "success");
+            }
+        })
+        .catch(err => {
+            console.error("Error al sincronizar con Google Sheets:", err);
+            if (!silent) {
+                showToast("Error de Conexión", "No se pudo conectar con Google Sheets. Verifique la URL y permisos.", "error");
+            }
+        });
+}
+
+function postToGoogleSheet() {
+    const url = document.getElementById("admGoogleSheetUrl") ? document.getElementById("admGoogleSheetUrl").value.trim() : "";
+    if (!url) {
+        showToast("URL Faltante", "Por favor, ingrese la URL de su Google Apps Script en la sección 9.", "warning");
+        return;
+    }
+
+    // Double check password authorization
+    const isLoggedIn = localStorage.getItem("msiAdminLoggedIn") === "true";
+    if (!isLoggedIn) {
+        showToast("Acceso Denegado", "Debe iniciar sesión como administrador para realizar esta acción.", "error");
+        return;
+    }
+
+    // Collect all admin inputs to upload
+    const adminInputIds = [
+        "admFleteCbm", "admFleteFcl", "admFleteAereo", "admBlFee", "admPickUp", "admGastosOrigen",
+        "admSeguroComercial", "admDocFee", "admDescargaTn", "admVistoBueno",
+        "admTransporteInterno", "admAlmacenajeVerde", "admVistoBuenoLinea", 
+        "admGateIn", "admDescargaPuerto", "admComisionAduana", "admGastosOperativos",
+        "admArancel", "admPercepcion", "admTipoCambio", "indCantidad", "indMargen",
+        "admPdfEmpresa", "admPdfSub1", "admPdfSub2", "admPdfBancoSoles", "admPdfBancoSolesCci",
+        "admPdfBancoDolares", "admPdfBancoDolaresCci", "admPdfBancoRuc", "admPdfBancoRazon",
+        "admPdfAsesorNombre", "admPdfAsesorCargo", "admPdfTerminos"
+    ];
+
+    const payload = {};
+    adminInputIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            payload[id] = el.value;
+        }
+    });
+
+    showConfirm(
+        "Subir Tarifas",
+        "¿Está seguro de subir las tarifas actuales a Google Sheets? Esto sobrescribirá los valores existentes en el documento Excel.",
+        () => {
+            // Send POST request as text/plain to avoid CORS preflight options request blocker
+            fetch(url, {
+                method: "POST",
+                mode: "no-cors", // Bypasses CORS redirect blockers on Apps Script
+                headers: {
+                    "Content-Type": "text/plain"
+                },
+                body: JSON.stringify(payload)
+            })
+            .then(() => {
+                showToast("Subida Completada", "Las tarifas fueron enviadas al Google Sheet con éxito.", "success");
+            })
+            .catch(err => {
+                console.error("Error al subir a Google Sheets:", err);
+                showToast("Error al Guardar", "Ocurrió un error al guardar los datos: " + err.message, "error");
+            });
+        }
+    );
+}
+
+// --------------------------------------------------------------------------
+// PREMIUM NOTIFICATIONS & MODALS
+// --------------------------------------------------------------------------
+function showToast(title, message, type = "info") {
+    const container = document.getElementById("toastContainer");
+    if (!container) return;
+
+    const toast = document.createElement("div");
+    toast.className = `toast-card ${type}`;
+
+    let iconClass = "fa-solid fa-info-circle";
+    if (type === "success") iconClass = "fa-solid fa-circle-check";
+    else if (type === "error") iconClass = "fa-solid fa-circle-xmark";
+    else if (type === "warning") iconClass = "fa-solid fa-triangle-exclamation";
+
+    toast.innerHTML = `
+        <i class="${iconClass} toast-icon"></i>
+        <div class="toast-content">
+            <div class="toast-title">${title}</div>
+            <div class="toast-message">${message}</div>
+        </div>
+    `;
+
+    container.appendChild(toast);
+
+    // Auto remove from DOM after animations end (4000ms matches CSS animation)
+    setTimeout(() => {
+        toast.remove();
+    }, 4000);
+}
+
+function showConfirm(title, message, onConfirm) {
+    const overlay = document.getElementById("customConfirmModal");
+    const titleEl = document.getElementById("confirmModalTitle");
+    const msgEl = document.getElementById("confirmModalMessage");
+    const btnAccept = document.getElementById("btnConfirmAccept");
+    const btnCancel = document.getElementById("btnConfirmCancel");
+
+    if (!overlay) {
+        // Fallback to native confirm if element not found
+        if (confirm(message)) onConfirm();
+        return;
+    }
+
+    titleEl.textContent = title;
+    msgEl.textContent = message;
+    overlay.style.display = "flex";
+
+    const closeConfirm = () => {
+        overlay.style.display = "none";
+        btnAccept.onclick = null;
+        btnCancel.onclick = null;
+    };
+
+    btnAccept.onclick = () => {
+        closeConfirm();
+        onConfirm();
+    };
+
+    btnCancel.onclick = () => {
+        closeConfirm();
+    };
+
+    // Close on clicking overlay
+    overlay.onclick = (e) => {
+        if (e.target === overlay) {
+            closeConfirm();
+        }
+    };
+}
+
+/**
+ * Clears the client-facing inputs in the first tab (individual calculator)
+ * after confirmation, then recalculates.
+ */
+function clearClientFields() {
+    showConfirm(
+        "Limpiar Campos",
+        "¿Está seguro de que desea limpiar todos los campos de esta pestaña?",
+        () => {
+            const fields = {
+                indCliente: "",
+                indProducto: "",
+                indValorMercancia: "",
+                indPeso: "",
+                indVolumen: "",
+                indCantidad: "",
+                indIncoterm: "EXW",
+                indTransporte: "maritimo",
+                indOrigen: "china"
+            };
+
+            for (const [id, val] of Object.entries(fields)) {
+                const el = document.getElementById(id);
+                if (el) el.value = val;
+            }
+
+            // Recalculate everything and update dashboard/charts
+            calculateIndividual();
+
+            // Display feedback
+            showToast(
+                "Campos Limpiados",
+                "Se han restablecido los campos del cliente en esta pestaña.",
+                "info"
+            );
+        }
+    );
+}
+
