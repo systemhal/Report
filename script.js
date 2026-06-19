@@ -14,9 +14,12 @@ document.addEventListener("DOMContentLoaded", () => {
         if (icon) icon.className = "fa-solid fa-sun";
     }
 
-    // Client view input IDs
+    // Restore admin login state
+    checkAdminLogin();
+
+    // Client view input IDs (Quantity and Margin reallocated to Admin)
     const clientInputIds = [
-        "indCliente", "indProducto", "indValorMercancia", "indPeso", "indVolumen", "indIncoterm", "indTransporte", "indOrigen", "indCantidad", "indMargen"
+        "indCliente", "indProducto", "indValorMercancia", "indPeso", "indVolumen", "indIncoterm", "indTransporte", "indOrigen"
     ];
     
     // Admin tariff input IDs
@@ -25,8 +28,14 @@ document.addEventListener("DOMContentLoaded", () => {
         "admSeguroComercial", "admDocFee", "admDescargaTn", "admVistoBueno",
         "admTransporteInterno", "admAlmacenajeVerde", "admVistoBuenoLinea", 
         "admGateIn", "admDescargaPuerto", "admComisionAduana", "admGastosOperativos",
-        "admArancel", "admPercepcion", "admTipoCambio"
+        "admArancel", "admPercepcion", "admTipoCambio", "indCantidad", "indMargen",
+        "admPdfEmpresa", "admPdfSub1", "admPdfSub2", "admPdfBancoSoles", "admPdfBancoSolesCci",
+        "admPdfBancoDolares", "admPdfBancoDolaresCci", "admPdfBancoRuc", "admPdfBancoRazon",
+        "admPdfAsesorNombre", "admPdfAsesorCargo", "admPdfTerminos"
     ];
+
+    // Load saved tariffs from localStorage
+    loadTariffs();
 
     // Bind event listeners to Client inputs
     clientInputIds.forEach(id => {
@@ -45,6 +54,20 @@ document.addEventListener("DOMContentLoaded", () => {
             el.addEventListener("change", calculateIndividual);
         }
     });
+
+    // Click outside popover to close it
+    document.addEventListener("click", (event) => {
+        const popover = document.getElementById("adminLoginPopover");
+        const btnLogin = document.getElementById("btnAdminLogin");
+        if (popover && popover.style.display === "block") {
+            if (!popover.contains(event.target) && !btnLogin.contains(event.target)) {
+                popover.style.display = "none";
+            }
+        }
+    });
+
+    // Render the recent history table
+    renderHistoryTable();
 
     // Initialize the calculation
     calculateIndividual();
@@ -254,6 +277,45 @@ function calculateIndividual() {
     // 14. Populate Printable PDF Proforma
     document.getElementById("pdfClienteNombre").textContent = document.getElementById("indCliente").value || "Raúl Bardales";
     document.getElementById("pdfProducto").textContent = document.getElementById("indProducto").value || "Motor Eléctrico Industrial + Accesorios";
+
+    // Read and update customizable PDF details from Admin Panel
+    const pdfEmpresa = document.getElementById("admPdfEmpresa") ? document.getElementById("admPdfEmpresa").value : "MSI ADUANAS PERU CARGO S.A.C.";
+    const pdfSub1 = document.getElementById("admPdfSub1") ? document.getElementById("admPdfSub1").value : "RUC: 20608934571 | Av. Elmer Faucett 150, Callao - Perú";
+    const pdfSub2 = document.getElementById("admPdfSub2") ? document.getElementById("admPdfSub2").value : "Contacto: cotizaciones@msicargo.com | Tel: (01) 451-9988";
+    const pdfBancoSoles = document.getElementById("admPdfBancoSoles") ? document.getElementById("admPdfBancoSoles").value : "191-9897990-0-94";
+    const pdfBancoSolesCci = document.getElementById("admPdfBancoSolesCci") ? document.getElementById("admPdfBancoSolesCci").value : "002-19100989799009455";
+    const pdfBancoDolares = document.getElementById("admPdfBancoDolares") ? document.getElementById("admPdfBancoDolares").value : "192-9950072-1-86";
+    const pdfBancoDolaresCci = document.getElementById("admPdfBancoDolaresCci") ? document.getElementById("admPdfBancoDolaresCci").value : "002-19200995007218637";
+    const pdfBancoRuc = document.getElementById("admPdfBancoRuc") ? document.getElementById("admPdfBancoRuc").value : "20609799316";
+    const pdfBancoRazon = document.getElementById("admPdfBancoRazon") ? document.getElementById("admPdfBancoRazon").value : "MSI ADUANAS PERÚ CARGO S.A.C";
+    const pdfAsesorNombre = document.getElementById("admPdfAsesorNombre") ? document.getElementById("admPdfAsesorNombre").value : "Jesus Riojas";
+    const pdfAsesorCargo = document.getElementById("admPdfAsesorCargo") ? document.getElementById("admPdfAsesorCargo").value : "Asesor de Ventas - MSI Cargo";
+    const pdfTerminos = document.getElementById("admPdfTerminos") ? document.getElementById("admPdfTerminos").value : "Impuestos SUNAT se cancelan en Soles al T.C. oficial del día.\nSujeto a variación por documentos de aduana definitivos.";
+
+    if (document.getElementById("pdfEmpresaNombre")) document.getElementById("pdfEmpresaNombre").textContent = pdfEmpresa;
+    if (document.getElementById("pdfEmpresaSub1")) document.getElementById("pdfEmpresaSub1").textContent = pdfSub1;
+    if (document.getElementById("pdfEmpresaSub2")) document.getElementById("pdfEmpresaSub2").textContent = pdfSub2;
+    if (document.getElementById("pdfBancoSoles")) document.getElementById("pdfBancoSoles").textContent = pdfBancoSoles;
+    if (document.getElementById("pdfBancoSolesCci")) document.getElementById("pdfBancoSolesCci").textContent = pdfBancoSolesCci;
+    if (document.getElementById("pdfBancoDolares")) document.getElementById("pdfBancoDolares").textContent = pdfBancoDolares;
+    if (document.getElementById("pdfBancoDolaresCci")) document.getElementById("pdfBancoDolaresCci").textContent = pdfBancoDolaresCci;
+    if (document.getElementById("pdfBancoRuc")) document.getElementById("pdfBancoRuc").textContent = pdfBancoRuc;
+    if (document.getElementById("pdfBancoRazon")) document.getElementById("pdfBancoRazon").textContent = pdfBancoRazon;
+    if (document.getElementById("pdfAsesorNombre")) document.getElementById("pdfAsesorNombre").textContent = pdfAsesorNombre;
+    if (document.getElementById("pdfAsesorCargo")) document.getElementById("pdfAsesorCargo").textContent = pdfAsesorCargo;
+
+    const terminosList = document.getElementById("pdfTerminosList");
+    if (terminosList) {
+        terminosList.innerHTML = "";
+        const lines = pdfTerminos.split("\n");
+        lines.forEach(line => {
+            if (line.trim() !== "") {
+                const li = document.createElement("li");
+                li.textContent = line.trim();
+                terminosList.appendChild(li);
+            }
+        });
+    }
     
     // Format transport text
     let transportText = "Marítimo LCL";
@@ -315,6 +377,9 @@ function calculateIndividual() {
 
     // 15. Refresh visual Chart
     updateIndividualChart(mercancia, impuestos_totales, servicios_logicos_totales);
+
+    // Save to localStorage
+    saveTariffs();
 }
 
 // --------------------------------------------------------------------------
@@ -340,6 +405,9 @@ function printPdf() {
     const randomNum = Math.floor(1000 + Math.random() * 9000);
     document.getElementById("pdfCotizacionNum").textContent = `MSI-${today.getFullYear()}-J${randomNum}`;
     
+    // Save simulation to history
+    saveCurrentQuoteToHistory();
+
     // Trigger print dialog
     window.print();
 }
@@ -454,4 +522,342 @@ function formatCurrency(val, currency = "USD") {
     } else {
         return `S/ ${formatted}`;
     }
+}
+
+// --------------------------------------------------------------------------
+// ADMIN AND TARIFF PERSISTENCE UTILITIES
+// --------------------------------------------------------------------------
+function saveTariffs() {
+    const adminInputIds = [
+        "admFleteCbm", "admFleteFcl", "admFleteAereo", "admBlFee", "admPickUp", "admGastosOrigen",
+        "admSeguroComercial", "admDocFee", "admDescargaTn", "admVistoBueno",
+        "admTransporteInterno", "admAlmacenajeVerde", "admVistoBuenoLinea", 
+        "admGateIn", "admDescargaPuerto", "admComisionAduana", "admGastosOperativos",
+        "admArancel", "admPercepcion", "admTipoCambio", "indCantidad", "indMargen"
+    ];
+    const tariffs = {};
+    adminInputIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            tariffs[id] = el.value;
+        }
+    });
+    localStorage.setItem("msiTariffs", JSON.stringify(tariffs));
+}
+
+function loadTariffs() {
+    const tariffsStr = localStorage.getItem("msiTariffs");
+    if (tariffsStr) {
+        try {
+            const tariffs = JSON.parse(tariffsStr);
+            Object.keys(tariffs).forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.value = tariffs[id];
+                }
+            });
+        } catch (e) {
+            console.error("Error loading tariffs", e);
+        }
+    }
+}
+
+function checkAdminLogin() {
+    const isLoggedIn = localStorage.getItem("msiAdminLoggedIn") === "true";
+    const tabPersonal = document.getElementById("tabPersonal");
+    const tabGuia = document.getElementById("tabGuia");
+    const btnLogin = document.getElementById("btnAdminLogin");
+    
+    if (tabPersonal && tabGuia) {
+        if (isLoggedIn) {
+            tabPersonal.style.display = "";
+            tabGuia.style.display = "";
+            if (btnLogin) {
+                btnLogin.classList.add("active");
+                btnLogin.innerHTML = '<i class="fa-solid fa-lock-open"></i>';
+                btnLogin.title = "Cerrar Sesión Administrador";
+            }
+        } else {
+            tabPersonal.style.display = "none";
+            tabGuia.style.display = "none";
+            if (btnLogin) {
+                btnLogin.classList.remove("active");
+                btnLogin.innerHTML = '<i class="fa-solid fa-lock"></i>';
+                btnLogin.title = "Acceso Administrador";
+            }
+        }
+    }
+}
+
+function toggleAdminLogin(event) {
+    const isLoggedIn = localStorage.getItem("msiAdminLoggedIn") === "true";
+    if (isLoggedIn) {
+        // Log out
+        localStorage.removeItem("msiAdminLoggedIn");
+        checkAdminLogin();
+        // If we are currently in an admin tab, go back to client tab
+        const activeTab = document.querySelector(".tab-btn.active");
+        if (activeTab && (activeTab.id === "tabPersonal" || activeTab.id === "tabGuia")) {
+            switchTab("individual");
+        }
+        alert("Sesión de administrador cerrada.");
+    } else {
+        // Toggle Popover
+        const popover = document.getElementById("adminLoginPopover");
+        if (popover) {
+            const isHidden = popover.style.display === "none" || popover.style.display === "";
+            if (isHidden) {
+                popover.style.display = "block";
+                const input = document.getElementById("adminPasswordInput");
+                if (input) {
+                    input.value = "";
+                    setTimeout(() => input.focus(), 50); // Small timeout to ensure visibility
+                }
+                const errorMsg = document.getElementById("popoverErrorMsg");
+                if (errorMsg) errorMsg.style.display = "none";
+            } else {
+                popover.style.display = "none";
+            }
+        }
+    }
+}
+
+function submitAdminLogin() {
+    const input = document.getElementById("adminPasswordInput");
+    const errorMsg = document.getElementById("popoverErrorMsg");
+    const popover = document.getElementById("adminLoginPopover");
+    
+    if (input) {
+        const password = input.value;
+        const correctPassword = localStorage.getItem("msiAdminPassword") || "msi2026";
+        if (password === correctPassword) {
+            localStorage.setItem("msiAdminLoggedIn", "true");
+            checkAdminLogin();
+            if (popover) popover.style.display = "none";
+            input.value = "";
+            alert("Acceso concedido. Panel de tarifas y Guía desbloqueados.");
+        } else {
+            if (errorMsg) {
+                errorMsg.style.display = "block";
+            }
+        }
+    }
+}
+
+function handleAdminPasswordKey(event) {
+    if (event.key === "Enter") {
+        submitAdminLogin();
+    } else if (event.key === "Escape") {
+        const popover = document.getElementById("adminLoginPopover");
+        if (popover) popover.style.display = "none";
+    }
+}
+
+// --------------------------------------------------------------------------
+// RECENT HISTORY FUNCTIONS
+// --------------------------------------------------------------------------
+function saveCurrentQuoteToHistory() {
+    const cliente = document.getElementById("indCliente").value || "Sin Nombre";
+    const producto = document.getElementById("indProducto").value || "Sin Producto";
+    const valorMercancia = document.getElementById("indValorMercancia").value || "0";
+    const peso = document.getElementById("indPeso").value || "0";
+    const volumen = document.getElementById("indVolumen").value || "0";
+    const incoterm = document.getElementById("indIncoterm").value;
+    const transporte = document.getElementById("indTransporte").value;
+    const origen = document.getElementById("indOrigen").value;
+    const total = document.getElementById("resTotalImportacionUsd").textContent || "$ 0.00";
+
+    const quote = {
+        cliente,
+        producto,
+        valorMercancia,
+        peso,
+        volumen,
+        incoterm,
+        transporte,
+        origen,
+        total,
+        timestamp: new Date().getTime()
+    };
+
+    let history = [];
+    const historyStr = localStorage.getItem("msiQuoteHistory");
+    if (historyStr) {
+        try {
+            history = JSON.parse(historyStr);
+        } catch(e) {
+            console.error(e);
+        }
+    }
+
+    // Check if the exact quote is already the latest in history
+    if (history.length > 0) {
+        const latest = history[0];
+        if (latest.cliente === quote.cliente && 
+            latest.producto === quote.producto && 
+            latest.valorMercancia === quote.valorMercancia && 
+            latest.peso === quote.peso && 
+            latest.volumen === quote.volumen && 
+            latest.incoterm === quote.incoterm && 
+            latest.transporte === quote.transporte && 
+            latest.origen === quote.origen) {
+            return;
+        }
+    }
+
+    history.unshift(quote);
+    if (history.length > 5) {
+        history = history.slice(0, 5);
+    }
+
+    localStorage.setItem("msiQuoteHistory", JSON.stringify(history));
+    renderHistoryTable();
+}
+
+function renderHistoryTable() {
+    const tbody = document.getElementById("historyTableBody");
+    if (!tbody) return;
+
+    let history = [];
+    const historyStr = localStorage.getItem("msiQuoteHistory");
+    if (historyStr) {
+        try {
+            history = JSON.parse(historyStr);
+        } catch(e) {
+            console.error(e);
+        }
+    }
+
+    if (history.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" style="padding: 16px; text-align: center; color: var(--text-muted);">No hay cotizaciones registradas en el historial.</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = "";
+    history.forEach((q, idx) => {
+        let tText = "Marítimo LCL";
+        if (q.transporte === "maritimo_fcl") tText = "Marítimo FCL";
+        else if (q.transporte === "aereo") tText = "Aéreo";
+
+        let oText = "China";
+        if (q.origen === "eeuu") oText = "EEUU";
+        else if (q.origen === "europa") oText = "Europa";
+
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+            <td style="padding: 10px;">${escapeHtml(q.cliente)}</td>
+            <td style="padding: 10px;">${escapeHtml(q.producto)}</td>
+            <td style="padding: 10px; font-weight: 600;">${escapeHtml(q.incoterm)}</td>
+            <td style="padding: 10px;">${tText} (${oText})</td>
+            <td style="padding: 10px;">$ ${parseFloat(q.valorMercancia).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
+            <td style="padding: 10px; font-weight: 700; color: var(--text-main);">${q.total}</td>
+            <td style="padding: 10px; text-align: right;">
+                <button class="btn-history-load" onclick="loadQuoteFromHistory(${idx})" style="background-color: var(--primary-light); color: white; border: none; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; transition: var(--transition-fast);">
+                    Cargar
+                </button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+function loadQuoteFromHistory(idx) {
+    let history = [];
+    const historyStr = localStorage.getItem("msiQuoteHistory");
+    if (historyStr) {
+        try {
+            history = JSON.parse(historyStr);
+        } catch(e) {
+            console.error(e);
+        }
+    }
+
+    const q = history[idx];
+    if (q) {
+        if (document.getElementById("indCliente")) document.getElementById("indCliente").value = q.cliente;
+        if (document.getElementById("indProducto")) document.getElementById("indProducto").value = q.producto;
+        if (document.getElementById("indValorMercancia")) document.getElementById("indValorMercancia").value = q.valorMercancia;
+        if (document.getElementById("indPeso")) document.getElementById("indPeso").value = q.peso;
+        if (document.getElementById("indVolumen")) document.getElementById("indVolumen").value = q.volumen;
+        if (document.getElementById("indIncoterm")) document.getElementById("indIncoterm").value = q.incoterm;
+        if (document.getElementById("indTransporte")) document.getElementById("indTransporte").value = q.transporte;
+        if (document.getElementById("indOrigen")) document.getElementById("indOrigen").value = q.origen;
+
+        calculateIndividual();
+        alert("¡Cotización cargada correctamente!");
+        
+        switchTab("individual");
+    }
+}
+
+function escapeHtml(text) {
+    return text
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
+// --------------------------------------------------------------------------
+// SECURITY & TARIFF DATA MANAGEMENT
+// --------------------------------------------------------------------------
+function changeAdminPassword() {
+    const newPass = document.getElementById("admNewPassword").value;
+    const confirmPass = document.getElementById("admNewPasswordConfirm").value;
+    
+    if (!newPass) {
+        alert("Por favor, ingrese la nueva contraseña.");
+        return;
+    }
+    if (newPass !== confirmPass) {
+        alert("Las contraseñas no coinciden. Por favor, verifique.");
+        return;
+    }
+    
+    localStorage.setItem("msiAdminPassword", newPass);
+    document.getElementById("admNewPassword").value = "";
+    document.getElementById("admNewPasswordConfirm").value = "";
+    alert("¡Contraseña de administrador actualizada con éxito!");
+}
+
+function exportTariffs() {
+    const tariffsStr = localStorage.getItem("msiTariffs") || "{}";
+    const blob = new Blob([tariffsStr], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "msi_tarifas_export_" + new Date().toISOString().slice(0, 10) + ".json";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+function importTariffs() {
+    document.getElementById("importTariffsFile").click();
+}
+
+function handleImportTariffs(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const tariffs = JSON.parse(e.target.result);
+            if (typeof tariffs === "object" && tariffs !== null) {
+                localStorage.setItem("msiTariffs", JSON.stringify(tariffs));
+                loadTariffs();
+                calculateIndividual();
+                alert("¡Tarifas importadas y aplicadas con éxito!");
+            } else {
+                alert("El archivo no tiene un formato de tarifas válido.");
+            }
+        } catch (err) {
+            alert("Error al leer el archivo de tarifas: " + err.message);
+        }
+    };
+    reader.readAsText(file);
+    event.target.value = "";
 }

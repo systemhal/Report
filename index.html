@@ -29,6 +29,19 @@
             <button class="btn-toggle-dark" id="btnToggleDark" onclick="toggleDarkMode()" title="Cambiar Tema (Claro/Oscuro)">
                 <i class="fa-solid fa-moon"></i>
             </button>
+            <div class="admin-login-wrapper" style="position: relative; display: inline-block;">
+                <button class="btn-admin-login" id="btnAdminLogin" onclick="toggleAdminLogin(event)" title="Acceso Administrador">
+                    <i class="fa-solid fa-lock"></i>
+                </button>
+                <div class="admin-login-popover" id="adminLoginPopover" style="display: none;">
+                    <h4>Acceso Administrador</h4>
+                    <div class="popover-body">
+                        <input type="password" id="adminPasswordInput" placeholder="Contraseña..." onkeydown="handleAdminPasswordKey(event)">
+                        <button class="btn-popover-login" onclick="submitAdminLogin()">Ingresar</button>
+                    </div>
+                    <div id="popoverErrorMsg" class="popover-error" style="display: none;">Clave incorrecta</div>
+                </div>
+            </div>
             <button class="btn-download-pdf" id="btnDownloadPdf" onclick="printPdf()">
                 <i class="fa-solid fa-file-pdf"></i> Generar Proforma PDF
             </button>
@@ -47,10 +60,10 @@
             <button class="tab-btn active" id="tabIndividual" onclick="switchTab('individual')">
                 <i class="fa-solid fa-calculator"></i> Calculadora Cliente
             </button>
-            <button class="tab-btn" id="tabPersonal" onclick="switchTab('personal')">
+            <button class="tab-btn" id="tabPersonal" onclick="switchTab('personal')" style="display: none;">
                 <i class="fa-solid fa-gears"></i> Panel MSI (Tarifas)
             </button>
-            <button class="tab-btn" id="tabGuia" onclick="switchTab('guia')">
+            <button class="tab-btn" id="tabGuia" onclick="switchTab('guia')" style="display: none;">
                 <i class="fa-solid fa-book-open"></i> Guía de Conceptos y Fórmulas
             </button>
         </div>
@@ -92,18 +105,6 @@
                                     <label for="indVolumen"><i class="fa-solid fa-cube"></i> Volumen Total (CBM)</label>
                                     <input type="number" id="indVolumen" value="2.14" min="0" step="0.01" required>
                                     <span class="input-info-text"><i class="fa-solid fa-circle-info"></i> Mín. 1 CBM para LCL</span>
-                                </div>
-                            </div>
-                            <div class="form-row two-cols" style="margin-top: 15px; border-top: 1px dashed var(--border-color); padding-top: 15px;">
-                                <div class="form-group">
-                                    <label for="indCantidad"><i class="fa-solid fa-list-ol"></i> Cantidad de Unidades del Producto</label>
-                                    <input type="number" id="indCantidad" value="10" min="1" step="1" required>
-                                    <span class="input-info-text"><i class="fa-solid fa-circle-info"></i> Cantidad para prorratear costos</span>
-                                </div>
-                                <div class="form-group">
-                                    <label for="indMargen"><i class="fa-solid fa-percent"></i> Margen de Utilidad Comercial (%)</label>
-                                    <input type="number" id="indMargen" value="30" min="0" max="1000" step="0.1" required>
-                                    <span class="input-info-text"><i class="fa-solid fa-circle-info"></i> Margen sobre el costo nacionalizado</span>
                                 </div>
                             </div>
                         </div>
@@ -330,6 +331,34 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Historial de Cotizaciones Recientes -->
+            <div class="panel history-panel" style="margin-top: 24px; padding: 20px;">
+                <div class="panel-header" style="margin-bottom: 16px;">
+                    <h3 style="margin: 0; color: var(--text-main); font-family: 'Outfit', sans-serif;"><i class="fa-solid fa-clock-rotate-left"></i> Historial de Cotizaciones Recientes</h3>
+                    <p class="panel-subtitle" style="font-size: 12px; margin: 4px 0 0 0;">Últimas 5 simulaciones realizadas. Haga clic en una cotización para cargarla.</p>
+                </div>
+                <div class="table-responsive" style="overflow-x: auto;">
+                    <table class="history-table" style="width: 100%; border-collapse: collapse; text-align: left;">
+                        <thead>
+                            <tr style="border-bottom: 2px solid var(--border-color); font-weight: 700; color: var(--text-main);">
+                                <th style="padding: 10px;">Cliente</th>
+                                <th style="padding: 10px;">Producto</th>
+                                <th style="padding: 10px;">Incoterm</th>
+                                <th style="padding: 10px;">Transporte</th>
+                                <th style="padding: 10px;">Valor FOB</th>
+                                <th style="padding: 10px;">Costo Total</th>
+                                <th style="padding: 10px; text-align: right;">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="historyTableBody">
+                            <tr>
+                                <td colspan="7" style="padding: 16px; text-align: center; color: var(--text-muted);">No hay cotizaciones registradas en el historial.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
 
         <!-- TAB 2: PANEL MSI (TARIFAS) -->
@@ -479,6 +508,127 @@
                                 </div>
                             </div>
                         </div>
+
+                        <!-- Commercial Default Parameters -->
+                        <div class="admin-section">
+                            <h3><i class="fa-solid fa-chart-line"></i> 5. Parámetros de Simulación Unitario</h3>
+                            <div class="admin-grid">
+                                <div class="form-group admin-yellow">
+                                    <label for="indCantidad">Cantidad de Unidades del Producto</label>
+                                    <input type="number" id="indCantidad" value="10" min="1" step="1" required>
+                                    <span class="help-text">Cantidad para prorratear costos unitarios</span>
+                                </div>
+                                <div class="form-group admin-yellow">
+                                    <label for="indMargen">Margen de Utilidad Comercial (%)</label>
+                                    <input type="number" id="indMargen" value="30" min="0" max="1000" step="0.1" required>
+                                    <span class="help-text">Margen sobre el precio sugerido (Sin IGV)</span>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Seguridad -->
+                        <div class="admin-section">
+                            <h3><i class="fa-solid fa-shield-halved"></i> 6. Seguridad del Panel</h3>
+                            <div class="admin-grid">
+                                <div class="form-group admin-yellow">
+                                    <label for="admNewPassword">Nueva Contraseña</label>
+                                    <input type="password" id="admNewPassword" placeholder="Dejar en blanco para no cambiar">
+                                    <span class="help-text">Establecer contraseña del panel</span>
+                                </div>
+                                <div class="form-group admin-yellow">
+                                    <label for="admNewPasswordConfirm">Confirmar Contraseña</label>
+                                    <input type="password" id="admNewPasswordConfirm" placeholder="Repita la nueva contraseña">
+                                    <span class="help-text">Confirme la nueva contraseña</span>
+                                </div>
+                                <div class="form-group" style="display: flex; align-items: flex-end; margin-bottom: 24px;">
+                                    <button type="button" class="btn-popover-login" onclick="changeAdminPassword()" style="width: 100%; height: 42px; border-radius: 8px;">Actualizar Contraseña</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Gestión de Tarifas -->
+                        <div class="admin-section">
+                            <h3><i class="fa-solid fa-file-invoice-dollar"></i> 7. Gestión del Tarifario</h3>
+                            <div class="admin-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+                                <div class="form-group" style="margin: 0; margin-bottom: 24px;">
+                                    <button type="button" class="btn-popover-login" onclick="exportTariffs()" style="width: 100%; height: 42px; border-radius: 8px; background-color: #0284c7;">
+                                        <i class="fa-solid fa-file-export"></i> Exportar Tarifario (.json)
+                                    </button>
+                                </div>
+                                <div class="form-group" style="margin: 0; margin-bottom: 24px;">
+                                    <input type="file" id="importTariffsFile" style="display: none;" onchange="handleImportTariffs(event)">
+                                    <button type="button" class="btn-popover-login" onclick="importTariffs()" style="width: 100%; height: 42px; border-radius: 8px; background-color: #0ea5e9;">
+                                        <i class="fa-solid fa-file-import"></i> Importar Tarifario (.json)
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Personalización PDF -->
+                        <div class="admin-section">
+                            <h3><i class="fa-solid fa-file-pdf"></i> 8. Personalización de Proforma PDF</h3>
+                            <div class="admin-grid">
+                                <div class="form-group admin-yellow">
+                                    <label for="admPdfEmpresa">Nombre de la Empresa</label>
+                                    <input type="text" id="admPdfEmpresa" value="MSI ADUANAS PERU CARGO S.A.C." required>
+                                    <span class="help-text">Se muestra en el encabezado del PDF</span>
+                                </div>
+                                <div class="form-group admin-yellow">
+                                    <label for="admPdfSub1">Datos de la Empresa (Línea 1)</label>
+                                    <input type="text" id="admPdfSub1" value="RUC: 20608934571 | Av. Elmer Faucett 150, Callao - Perú" required>
+                                    <span class="help-text">RUC y dirección física de la empresa</span>
+                                </div>
+                                <div class="form-group admin-yellow">
+                                    <label for="admPdfSub2">Datos de la Empresa (Línea 2)</label>
+                                    <input type="text" id="admPdfSub2" value="Contacto: cotizaciones@msicargo.com | Tel: (01) 451-9988" required>
+                                    <span class="help-text">Datos de contacto de la oficina principal</span>
+                                </div>
+                                <div class="form-group admin-yellow">
+                                    <label for="admPdfBancoSoles">Cuenta BCP (Soles)</label>
+                                    <input type="text" id="admPdfBancoSoles" value="191-9897990-0-94" required>
+                                    <span class="help-text">Número de cuenta corriente Soles</span>
+                                </div>
+                                <div class="form-group admin-yellow">
+                                    <label for="admPdfBancoSolesCci">CCI Cuenta Soles</label>
+                                    <input type="text" id="admPdfBancoSolesCci" value="002-19100989799009455" required>
+                                    <span class="help-text">CCI para transferencias en Soles</span>
+                                </div>
+                                <div class="form-group admin-yellow">
+                                    <label for="admPdfBancoDolares">Cuenta BCP (Dólares)</label>
+                                    <input type="text" id="admPdfBancoDolares" value="192-9950072-1-86" required>
+                                    <span class="help-text">Número de cuenta corriente Dólares</span>
+                                </div>
+                                <div class="form-group admin-yellow">
+                                    <label for="admPdfBancoDolaresCci">CCI Cuenta Dólares</label>
+                                    <input type="text" id="admPdfBancoDolaresCci" value="002-19200995007218637" required>
+                                    <span class="help-text">CCI para transferencias en Dólares</span>
+                                </div>
+                                <div class="form-group admin-yellow">
+                                    <label for="admPdfBancoRuc">RUC de Cuenta</label>
+                                    <input type="text" id="admPdfBancoRuc" value="20609799316" required>
+                                    <span class="help-text">RUC asociado a las cuentas</span>
+                                </div>
+                                <div class="form-group admin-yellow">
+                                    <label for="admPdfBancoRazon">Razón Social de Cuenta</label>
+                                    <input type="text" id="admPdfBancoRazon" value="MSI ADUANAS PERÚ CARGO S.A.C" required>
+                                    <span class="help-text">Razón social de las cuentas</span>
+                                </div>
+                                <div class="form-group admin-yellow">
+                                    <label for="admPdfAsesorNombre">Nombre del Asesor</label>
+                                    <input type="text" id="admPdfAsesorNombre" value="Jesus Riojas" required>
+                                    <span class="help-text">Nombre comercial que firma la proforma</span>
+                                </div>
+                                <div class="form-group admin-yellow">
+                                    <label for="admPdfAsesorCargo">Cargo del Asesor</label>
+                                    <input type="text" id="admPdfAsesorCargo" value="Asesor de Ventas - MSI Cargo" required>
+                                    <span class="help-text">Cargo que firma la proforma</span>
+                                </div>
+                                <div class="form-group admin-yellow" style="grid-column: span 2;">
+                                    <label for="admPdfTerminos">Condiciones Comerciales (Un ítem por línea)</label>
+                                    <textarea id="admPdfTerminos" rows="3" required style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); background-color: var(--bg-main); color: var(--text-main); font-family: inherit; font-size: 13px; outline: none;">Impuestos SUNAT se cancelan en Soles al T.C. oficial del día.&#10;Sujeto a variación por documentos de aduana definitivos.</textarea>
+                                    <span class="help-text">Detalle legal y comercial al pie del PDF</span>
+                                </div>
+                            </div>
+                        </div>
                     </form>
                     
                     <div class="admin-note">
@@ -597,9 +747,9 @@
             <div class="pdf-logo-area">
                 <img src="icono.png" alt="Logo MSI Cargo" class="pdf-logo">
                 <div class="pdf-company-info">
-                    <h2>MSI ADUANAS PERU CARGO S.A.C.</h2>
-                    <p>RUC: 20608934571 | Av. Elmer Faucett 150, Callao - Perú</p>
-                    <p>Contacto: cotizaciones@msicargo.com | Tel: (01) 451-9988</p>
+                    <h2 id="pdfEmpresaNombre">MSI ADUANAS PERU CARGO S.A.C.</h2>
+                    <p id="pdfEmpresaSub1">RUC: 20608934571 | Av. Elmer Faucett 150, Callao - Perú</p>
+                    <p id="pdfEmpresaSub2">Contacto: cotizaciones@msicargo.com | Tel: (01) 451-9988</p>
                 </div>
             </div>
             <div class="pdf-quote-badge">
@@ -849,24 +999,24 @@
                     <table class="bank-table">
                         <tr>
                             <td class="lbl">Soles:</td>
-                            <td>191-9897990-0-94</td>
+                            <td id="pdfBancoSoles">191-9897990-0-94</td>
                             <td class="lbl-cci">CCI:</td>
-                            <td>002-19100989799009455</td>
+                            <td id="pdfBancoSolesCci">002-19100989799009455</td>
                         </tr>
                         <tr>
                             <td class="lbl">Dólares:</td>
-                            <td>192-9950072-1-86</td>
+                            <td id="pdfBancoDolares">192-9950072-1-86</td>
                             <td class="lbl-cci">CCI:</td>
-                            <td>002-19200995007218637</td>
+                            <td id="pdfBancoDolaresCci">002-19200995007218637</td>
                         </tr>
                     </table>
-                    <p class="bank-info-line"><strong>RUC:</strong> 20609799316</p>
-                    <p class="bank-info-line"><strong>Razon social:</strong> MSI ADUANAS PERÚ CARGO S.A.C</p>
+                    <p class="bank-info-line"><strong>RUC:</strong> <span id="pdfBancoRuc">20609799316</span></p>
+                    <p class="bank-info-line"><strong>Razon social:</strong> <span id="pdfBancoRazon">MSI ADUANAS PERÚ CARGO S.A.C</span></p>
                 </div>
 
                 <div class="pdf-notes">
                     <p><strong>Términos Comerciales:</strong></p>
-                    <ul>
+                    <ul id="pdfTerminosList">
                         <li>Impuestos SUNAT se cancelan en Soles al T.C. oficial del día.</li>
                         <li>Sujeto a variación por documentos de aduana definitivos.</li>
                     </ul>
@@ -878,8 +1028,8 @@
                 <div class="pdf-signatures">
                     <div class="signature-box">
                         <div class="signature-line"></div>
-                        <p><strong>Jesus Riojas</strong></p>
-                        <p>Asesor de Ventas - MSI Cargo</p>
+                        <p><strong id="pdfAsesorNombre">Jesus Riojas</strong></p>
+                        <p id="pdfAsesorCargo">Asesor de Ventas - MSI Cargo</p>
                     </div>
                     <div class="signature-box">
                         <div class="signature-line"></div>

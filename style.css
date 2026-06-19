@@ -224,6 +224,121 @@ h1, h2, h3, h4, .logo-text {
     transform: scale(1.05);
 }
 
+.btn-admin-login {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    width: 38px;
+    height: 38px;
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    font-size: 16px;
+    transition: var(--transition-fast);
+}
+
+.btn-admin-login:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: scale(1.05);
+}
+
+.btn-admin-login.active {
+    background-color: #10b981;
+    color: white;
+    border-color: #059669;
+    box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
+}
+
+/* Popover Login Administrador */
+.admin-login-popover {
+    position: absolute;
+    top: 48px;
+    right: 50%;
+    transform: translateX(50%);
+    background-color: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+    padding: 16px;
+    width: 260px;
+    z-index: 1000;
+    animation: fadeInPopover 0.2s ease-out;
+}
+
+body.dark-mode .admin-login-popover {
+    background-color: #1f2937;
+    border-color: #374151;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+}
+
+@keyframes fadeInPopover {
+    from {
+        opacity: 0;
+        transform: translateX(50%) translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(50%) translateY(0);
+    }
+}
+
+.admin-login-popover h4 {
+    margin: 0 0 10px 0;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-main);
+    font-family: 'Outfit', sans-serif;
+    text-align: left;
+}
+
+.admin-login-popover .popover-body {
+    display: flex;
+    gap: 8px;
+}
+
+.admin-login-popover input {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    font-size: 13px;
+    background-color: var(--bg-main);
+    color: var(--text-main);
+    outline: none;
+    transition: var(--transition-fast);
+}
+
+.admin-login-popover input:focus {
+    border-color: var(--primary);
+}
+
+.admin-login-popover .btn-popover-login {
+    background-color: var(--primary);
+    color: white;
+    border: none;
+    padding: 8px 14px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition-fast);
+}
+
+.admin-login-popover .btn-popover-login:hover {
+    background-color: var(--primary-dark);
+}
+
+.admin-login-popover .popover-error {
+    color: #ef4444;
+    font-size: 11px;
+    margin-top: 6px;
+    font-weight: 600;
+    text-align: left;
+}
+
+
 .btn-secondary {
     display: inline-flex;
     align-items: center;
@@ -1905,5 +2020,80 @@ body.dark-mode .key-card.highlight-yellow-card {
         break-inside: avoid;
     }
 }
+
+/* ==========================================================================
+   RECENT HISTORY AND SHARE STYLES
+   ========================================================================== */
+.history-panel {
+    background-color: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    box-shadow: var(--shadow-sm);
+    transition: var(--transition-fast);
+}
+
+.history-table th {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-main);
+    opacity: 0.7;
+    padding: 10px;
+    border-bottom: 2px solid var(--border-color);
+}
+
+.history-table td {
+    padding: 12px 10px;
+    font-size: 13px;
+    border-bottom: 1px solid var(--border-color);
+    color: var(--text-main);
+    vertical-align: middle;
+}
+
+.history-table tr:last-child td {
+    border-bottom: none;
+}
+
+.history-table tbody tr {
+    transition: var(--transition-fast);
+}
+
+.history-table tbody tr:hover {
+    background-color: rgba(0, 0, 0, 0.02);
+}
+
+body.dark-mode .history-table tbody tr:hover {
+    background-color: rgba(255, 255, 255, 0.02);
+}
+
+.btn-history-load {
+    background-color: var(--primary-light);
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition-fast);
+}
+
+.btn-history-load:hover {
+    background-color: var(--primary);
+    transform: translateY(-1px);
+}
+
+.btn-card-link:hover {
+    background-color: #0369a1 !important;
+    transform: translateY(-1px);
+}
+
+/* Hide history on print */
+@media print {
+    .history-panel {
+        display: none !important;
+    }
+}
+
 
 
