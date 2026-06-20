@@ -15,61 +15,71 @@
     <link rel="stylesheet" href="style.css">
     <!-- Chart.js CDN for interactive visual charts -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- SheetJS with styling support for client-side Excel creation -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
     <link rel="icon" href="icono.png" type="image/png">
 </head>
 <body>
-    <!-- Navbar / Header -->
-    <header class="app-header">
-        <div class="logo-container">
-            <img src="icono.png" alt="MSI Peru Cargo Logo" class="logo-img">
-            <div class="logo-text">MSI <span>Calculadora</span></div>
-        </div>
-        <div class="header-tagline">Portal de Costeo - MSI ADUANAS PERÚ CARGO</div>
-        <div class="header-actions" style="display: flex; gap: 10px; align-items: center;">
-            <button class="btn-toggle-dark" id="btnToggleDark" onclick="toggleDarkMode()" title="Cambiar Tema (Claro/Oscuro)">
-                <i class="fa-solid fa-moon"></i>
-            </button>
-            <div class="admin-login-wrapper" style="position: relative; display: inline-block;">
-                <button class="btn-admin-login" id="btnAdminLogin" onclick="toggleAdminLogin(event)" title="Acceso Administrador">
-                    <i class="fa-solid fa-lock"></i>
+    <div class="app-layout">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar-nav">
+            <div class="sidebar-header">
+                <img src="icono.png" alt="MSI Peru Cargo Logo" class="sidebar-logo">
+                <div class="sidebar-title">MSI <span>Calculadora</span></div>
+            </div>
+            
+            <nav class="sidebar-menu">
+                <button class="tab-btn active" id="tabIndividual" onclick="switchTab('individual')">
+                    <i class="fa-solid fa-calculator"></i> <span>Calculadora Cliente</span>
                 </button>
-                <div class="admin-login-popover" id="adminLoginPopover" style="display: none;">
-                    <h4>Acceso Administrador</h4>
-                    <div class="popover-body">
-                        <input type="password" id="adminPasswordInput" placeholder="Contraseña..." onkeydown="handleAdminPasswordKey(event)">
-                        <button class="btn-popover-login" onclick="submitAdminLogin()">Ingresar</button>
+                <button class="tab-btn" id="tabProductos" onclick="switchTab('productos')">
+                    <i class="fa-solid fa-tags"></i> <span>Precio de Productos</span>
+                </button>
+                <button class="tab-btn" id="tabPersonal" onclick="switchTab('personal')" style="display: none;">
+                    <i class="fa-solid fa-gears"></i> <span>Panel MSI (Tarifas)</span>
+                </button>
+                <button class="tab-btn" id="tabGuia" onclick="switchTab('guia')" style="display: none;">
+                    <i class="fa-solid fa-book-open"></i> <span>Guía de Conceptos</span>
+                </button>
+            </nav>
+
+            <div class="sidebar-footer">
+                <button class="btn-toggle-dark" id="btnToggleDark" onclick="toggleDarkMode()" title="Cambiar Tema (Claro/Oscuro)">
+                    <i class="fa-solid fa-moon"></i>
+                </button>
+                <div class="admin-login-wrapper" style="position: relative; display: inline-block;">
+                    <button class="btn-admin-login" id="btnAdminLogin" onclick="toggleAdminLogin(event)" title="Acceso Administrador">
+                        <i class="fa-solid fa-lock"></i>
+                    </button>
+                    <div class="admin-login-popover" id="adminLoginPopover" style="display: none;">
+                        <h4>Acceso Administrador</h4>
+                        <div class="popover-body">
+                            <input type="password" id="adminPasswordInput" placeholder="Contraseña..." onkeydown="handleAdminPasswordKey(event)">
+                            <button class="btn-popover-login" onclick="submitAdminLogin()">Ingresar</button>
+                        </div>
+                        <div id="popoverErrorMsg" class="popover-error" style="display: none;">Clave incorrecta</div>
                     </div>
-                    <div id="popoverErrorMsg" class="popover-error" style="display: none;">Clave incorrecta</div>
                 </div>
             </div>
-            <button class="btn-download-pdf" id="btnDownloadPdf" onclick="printPdf()">
-                <i class="fa-solid fa-file-pdf"></i> Generar Proforma PDF
-            </button>
-        </div>
-    </header>
+        </aside>
 
-    <main class="container">
-        <!-- Hero Section -->
-        <section class="hero">
-            <h1>Calculadora de Precio Unitario de Importación</h1>
-            <p>Optimice sus operaciones de importación en Perú. Distribuya fletes, seguros y gastos locales de despacho aduanero automáticamente entre sus mercancías.</p>
-        </section>
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Topbar (Portal title and quick actions) -->
+            <div class="top-bar">
+                <div class="top-tagline"><i class="fa-solid fa-ship"></i> Portal de Costeo - MSI ADUANAS PERÚ CARGO</div>
+            </div>
 
-        <!-- Tabs Navigation -->
-        <div class="tabs-container">
-            <button class="tab-btn active" id="tabIndividual" onclick="switchTab('individual')">
-                <i class="fa-solid fa-calculator"></i> Calculadora Cliente
-            </button>
-            <button class="tab-btn" id="tabPersonal" onclick="switchTab('personal')" style="display: none;">
-                <i class="fa-solid fa-gears"></i> Panel MSI (Tarifas)
-            </button>
-            <button class="tab-btn" id="tabGuia" onclick="switchTab('guia')" style="display: none;">
-                <i class="fa-solid fa-book-open"></i> Guía de Conceptos y Fórmulas
-            </button>
-        </div>
+            <!-- Content Container -->
+            <div class="container">
+                <!-- Hero Section -->
+                <section class="hero">
+                    <h1>Calculadora de Precio de Importación</h1>
+                    <p>Optimice sus operaciones de importación en Perú. Distribuya fletes, seguros y gastos locales de despacho aduanero automáticamente.</p>
+                </section>
 
-        <!-- TAB 1: CALCULADORA CLIENTE -->
-        <div class="tab-content active" id="contentIndividual">
+                <!-- TAB 1: CALCULADORA CLIENTE -->
+                <div class="tab-content active" id="contentIndividual">
             <div class="calculator-grid">
                 <!-- Input Panel (Client) -->
                 <div class="panel panel-inputs">
@@ -361,6 +371,93 @@
                                 <td colspan="7" style="padding: 16px; text-align: center; color: var(--text-muted);">No hay cotizaciones registradas en el historial.</td>
                             </tr>
                         </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 1.5: PRECIO UNITARIO DE PRODUCTOS -->
+        <div class="tab-content" id="contentProductos">
+            <div class="panel products-panel">
+                <div class="panel-header">
+                    <h2><i class="fa-solid fa-tags"></i> Cálculo de Precio Unitario por Prorrateo</h2>
+                    <div class="panel-actions" style="display: flex; gap: 8px;">
+                        <button type="button" class="btn-clear-fields" onclick="clearProductsTable()">
+                            <i class="fa-solid fa-eraser"></i> Limpiar Tabla
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Inputs Informativos / Base del Prorrateo -->
+                <div class="form-section-card" style="margin-bottom: 24px;">
+                    <h3 class="form-section-title"><i class="fa-solid fa-scale-balanced"></i> Valores Base de Prorrateo</h3>
+                    <div class="form-row three-cols">
+                        <div class="form-group">
+                            <label for="prodTotalImpuestos"><i class="fa-solid fa-building-columns"></i> Total Impuestos Aduana (USD)</label>
+                            <input type="number" id="prodTotalImpuestos" min="0" step="0.01" value="0.00" oninput="recalculateProducts()">
+                            <span class="input-info-text"><i class="fa-solid fa-circle-info"></i> Sincronizado de pestaña 1</span>
+                        </div>
+                        <div class="form-group">
+                            <label for="prodTotalServicios"><i class="fa-solid fa-truck-flatbed"></i> Total Servicios Logísticos (USD)</label>
+                            <input type="number" id="prodTotalServicios" min="0" step="0.01" value="0.00" oninput="recalculateProducts()">
+                            <span class="input-info-text"><i class="fa-solid fa-circle-info"></i> Sincronizado de pestaña 1</span>
+                        </div>
+                        <div class="form-group">
+                            <label for="prodTotalEXW" style="opacity: 0.85;"><i class="fa-solid fa-dollar-sign"></i> Total EXW Calculado (USD)</label>
+                            <input type="number" id="prodTotalEXW" value="0.00" disabled style="background-color: var(--border-color); font-weight: 700; color: var(--text-main);">
+                            <span class="input-info-text"><i class="fa-solid fa-circle-info"></i> Suma de AMOUNT de productos</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Controles de Carga y Exportación -->
+                <div class="table-actions-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
+                    <div class="action-buttons-left" style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+                        <input type="file" id="excelImportInput" accept=".xlsx, .xls" style="display: none;" onchange="importExcelProducts(event)">
+                        <button type="button" class="btn-secondary" onclick="document.getElementById('excelImportInput').click()" style="background-color: #3b82f6;">
+                            <i class="fa-solid fa-file-excel"></i> Importar Excel
+                        </button>
+                        <button type="button" class="btn-secondary" onclick="addProductRow()" style="background-color: #10b981;">
+                            <i class="fa-solid fa-plus"></i> Agregar Producto
+                        </button>
+                    </div>
+                    <div class="action-buttons-right" style="display: flex; gap: 8px; flex-wrap: wrap;">
+                        <button type="button" class="btn-download-excel" onclick="exportExcelProducts()" style="background-color: #15803d;">
+                            <i class="fa-solid fa-file-export"></i> Descargar Excel
+                        </button>
+                        <button type="button" class="btn-download-pdf" onclick="printProductsPdf()">
+                            <i class="fa-solid fa-file-pdf"></i> Imprimir PDF
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Tabla de Productos -->
+                <div class="table-responsive" style="overflow-x: auto; border: 1px solid var(--border-color); border-radius: 8px;">
+                    <table class="products-table" style="width: 100%; border-collapse: collapse; text-align: left; min-width: 800px;">
+                        <thead>
+                            <tr style="background-color: var(--table-header-bg); color: var(--table-header-text); font-weight: 700;">
+                                <th style="padding: 12px 10px; width: 60px; text-align: center;">Nro.</th>
+                                <th style="padding: 12px 10px;">Descripción</th>
+                                <th style="padding: 12px 10px; width: 110px; text-align: right;">Cantidad (QTY)</th>
+                                <th style="padding: 12px 10px; width: 140px; text-align: right;">EXW Unitario (USD)</th>
+                                <th style="padding: 12px 10px; width: 140px; text-align: right;">Total EXW (USD)</th>
+                                <th style="padding: 12px 10px; width: 200px; text-align: right; background-color: rgba(16, 185, 129, 0.2); color: var(--table-header-text);">Precio Unitario Almacén (USD)</th>
+                                <th style="padding: 12px 10px; width: 90px; text-align: right;">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="productsTableBody">
+                            <!-- Rows dynamically populated -->
+                        </tbody>
+                        <tfoot>
+                            <tr style="background-color: var(--border-color); font-weight: 700; border-top: 2px solid var(--primary-color);">
+                                <td colspan="2" style="padding: 12px 10px; text-align: right;">TOTALES:</td>
+                                <td id="totalQtySum" style="padding: 12px 10px; text-align: right;">0</td>
+                                <td style="padding: 12px 10px;"></td>
+                                <td id="totalAmountSum" style="padding: 12px 10px; text-align: right;">$ 0.00</td>
+                                <td id="totalLandedCostSum" style="padding: 12px 10px; text-align: right; background-color: rgba(16, 185, 129, 0.1);">$ 0.00</td>
+                                <td style="padding: 12px 10px;"></td>
+                            </tr>
+                        </tfoot>
                     </table>
                 </div>
             </div>
@@ -752,13 +849,15 @@
                 </div>
             </div>
         </div>
-    </main>
+        </div> <!-- Closes container -->
 
-    <!-- Footer -->
-    <footer class="app-footer">
-        <p>&copy; 2026 MsiCalc - Herramienta Profesional de Costeo de Importaciones. Todos los derechos reservados.</p>
-        <p class="footer-note">Nota: Los cálculos presentados son simulaciones comerciales basadas en las normativas aduaneras vigentes en el Perú. Los costos finales de flete local y almacenamiento pueden variar según su operador logístico.</p>
-    </footer>
+        <!-- Footer -->
+        <footer class="app-footer">
+            <p>&copy; 2026 MsiCalc - Herramienta Profesional de Costeo de Importaciones. Todos los derechos reservados.</p>
+            <p class="footer-note">Nota: Los cálculos presentados son simulaciones comerciales basadas en las normativas aduaneras vigentes en el Perú. Los costos finales de flete local y almacenamiento pueden variar según su operador logístico.</p>
+        </footer>
+    </main>
+    </div> <!-- Closes app-layout -->
 
     <!-- Printable Proforma Container (Hidden on screen, shown in print) -->
     <div id="printableProforma" class="print-only">
@@ -1063,6 +1162,69 @@
         <!-- Footer watermark -->
         <div class="pdf-footer-watermark">
             <p>Gracias por su preferencia. MSI ADUANAS PERU CARGO S.A.C. - Su socio estratégico en comercio internacional.</p>
+        </div>
+    </div>
+
+    <!-- Printable Product List Container (Hidden on screen, shown in print) -->
+    <div id="printableProductList" class="print-only">
+        <!-- Header -->
+        <div class="pdf-header">
+            <div class="pdf-logo-area">
+                <img src="icono.png" alt="Logo MSI Cargo" class="pdf-logo">
+                <div class="pdf-company-info">
+                    <h2 id="pdfEmpresaNombreProd">MSI ADUANAS PERU CARGO S.A.C.</h2>
+                    <p id="pdfEmpresaSub1Prod">RUC: 20608934571 | Av. Elmer Faucett 150, Callao - Perú</p>
+                    <p id="pdfEmpresaSub2Prod">Contacto: cotizaciones@msicargo.com | Tel: (01) 451-9988</p>
+                </div>
+            </div>
+            <div class="pdf-quote-badge">
+                <h3>REPORTE DE PRECIOS UNITARIOS</h3>
+                <div class="badge-row"><strong>Fecha:</strong> <span id="pdfFechaProd">18/06/2026</span></div>
+                <div class="badge-row"><strong>Cliente:</strong> <span id="pdfClienteNombreProd"></span></div>
+            </div>
+        </div>
+
+        <hr class="pdf-divider">
+
+        <!-- Info summary -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px; padding: 6px 10px; -webkit-print-color-adjust: exact; print-color-adjust: exact;">
+            <div style="font-size: 7.4pt; color: #374151;">
+                <strong>Total Impuestos Aduana:</strong> <span id="pdfTotalImpuestosProd">$ 0.00</span>
+            </div>
+            <div style="font-size: 7.4pt; color: #374151; text-align: right;">
+                <strong>Total Servicios Logísticos:</strong> <span id="pdfTotalServiciosProd">$ 0.00</span>
+            </div>
+        </div>
+
+        <!-- Table of Products -->
+        <table class="pdf-data-table" style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+            <thead>
+                <tr style="border-bottom: 2px solid #dc2626;">
+                    <th style="padding: 4px; width: 40px; text-align: center; font-size: 6.8pt;">No.</th>
+                    <th style="padding: 4px; font-size: 6.8pt;">Descripción</th>
+                    <th style="padding: 4px; width: 70px; text-align: right; font-size: 6.8pt;">Cant.</th>
+                    <th style="padding: 4px; width: 90px; text-align: right; font-size: 6.8pt;">EXW Unit (USD)</th>
+                    <th style="padding: 4px; width: 90px; text-align: right; font-size: 6.8pt;">Total EXW (USD)</th>
+                    <th style="padding: 4px; width: 120px; text-align: right; background-color: #f0fdf4; font-size: 7.2pt; font-weight: 700; -webkit-print-color-adjust: exact; print-color-adjust: exact;">Unit. Almacén (USD)</th>
+                </tr>
+            </thead>
+            <tbody id="pdfProductsTableBody">
+                <!-- Dynamically populated rows -->
+            </tbody>
+            <tfoot>
+                <tr style="border-top: 1.5px solid #d1d5db; font-weight: 700; background-color: #f9fafb; -webkit-print-color-adjust: exact; print-color-adjust: exact;">
+                    <td colspan="2" style="padding: 5px; text-align: right; font-size: 7.2pt;">TOTALES:</td>
+                    <td id="pdfTotalQtyProd" style="padding: 5px; text-align: right; font-size: 7.2pt;">0</td>
+                    <td style="padding: 5px;"></td>
+                    <td id="pdfTotalAmountProd" style="padding: 5px; text-align: right; font-size: 7.2pt;">$ 0.00</td>
+                    <td id="pdfTotalLandedCostProd" style="padding: 5px; text-align: right; font-size: 7.2pt; background-color: #f0fdf4;">$ 0.00</td>
+                </tr>
+            </tfoot>
+        </table>
+
+        <!-- Watermark/Footer -->
+        <div class="pdf-footer-watermark" style="position: absolute; bottom: 5px; left: 4mm; right: 4mm; text-align: center;">
+            <p>Reporte generado por MsiCalc - MSI ADUANAS PERU CARGO S.A.C.</p>
         </div>
     </div>
 

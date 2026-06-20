@@ -4,6 +4,7 @@
 
 // Global state variables
 let indChartInstance = null;
+let productItems = [];
 
 // Document Ready
 document.addEventListener("DOMContentLoaded", () => {
@@ -36,6 +37,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Load saved tariffs from localStorage
     loadTariffs();
+    loadProducts();
 
     // Default URL fallback if empty
     const sheetUrlEl = document.getElementById("admGoogleSheetUrl");
@@ -88,16 +90,22 @@ document.addEventListener("DOMContentLoaded", () => {
 function switchTab(tabName) {
     // Toggle active buttons
     document.getElementById("tabIndividual").classList.toggle("active", tabName === "individual");
+    document.getElementById("tabProductos").classList.toggle("active", tabName === "productos");
     document.getElementById("tabPersonal").classList.toggle("active", tabName === "personal");
     document.getElementById("tabGuia").classList.toggle("active", tabName === "guia");
 
     // Toggle active content divs
     document.getElementById("contentIndividual").classList.toggle("active", tabName === "individual");
+    document.getElementById("contentProductos").classList.toggle("active", tabName === "productos");
     document.getElementById("contentPersonal").classList.toggle("active", tabName === "personal");
     document.getElementById("contentGuia").classList.toggle("active", tabName === "guia");
     
     // Recalculate on switch
-    calculateIndividual();
+    if (tabName === "individual") {
+        calculateIndividual();
+    } else if (tabName === "productos") {
+        syncTotalsFromCalculator();
+    }
 }
 
 // --------------------------------------------------------------------------
@@ -441,8 +449,8 @@ function printPdf() {
     saveCurrentQuoteToHistory();
 
     // Suggest a professional filename by temporarily modifying document.title
-    const clientVal = document.getElementById("indCliente").value.trim() || "Cliente";
-    const productVal = document.getElementById("indProducto").value.trim() || "Producto";
+    const clientVal = document.getElementById("indCliente").value.trim();
+    const productVal = document.getElementById("indProducto").value.trim();
     
     const sanitizeFilename = (str) => {
         // Remove accents and special characters that are illegal in file names, replace spaces with underscores
@@ -455,13 +463,21 @@ function printPdf() {
     const clientClean = sanitizeFilename(clientVal);
     const productClean = sanitizeFilename(productVal);
     
+    let docTitle = `Cotizacion_${quoteNum}`;
+    if (clientClean) docTitle += `_${clientClean}`;
+    if (productClean) docTitle += `_${productClean}`;
+    
     const originalTitle = document.title;
-    document.title = `Cotizacion_${quoteNum}_${clientClean}_${productClean}`;
+    document.title = docTitle;
+
+    // Add print class to body
+    document.body.classList.add("print-proforma");
 
     // Trigger print dialog
     window.print();
 
-    // Restore original title
+    // Cleanup
+    document.body.classList.remove("print-proforma");
     document.title = originalTitle;
 }
 
@@ -1147,5 +1163,672 @@ function clearClientFields() {
             );
         }
     );
+}
+
+// --------------------------------------------------------------------------
+// MULTIPLE PRODUCTS LANDED COST PRORATE ENGINE
+// --------------------------------------------------------------------------
+function loadProducts() {
+    const saved = localStorage.getItem("msiProductItems");
+    if (saved) {
+        try {
+            const parsed = JSON.parse(saved);
+            if (Array.isArray(parsed)) {
+                productItems = parsed;
+            } else {
+                productItems = [];
+            }
+        } catch(e) {
+            console.error("Error parsing saved products", e);
+            productItems = [];
+        }
+    } else {
+        productItems = [];
+    }
+}
+
+function syncTotalsFromCalculator() {
+    const taxesText = document.getElementById("resPillImpuestos").textContent || "$ 0.00";
+    const servicesText = document.getElementById("resPillServicios").textContent || "$ 0.00";
+    
+    const cleanNumber = (text) => {
+        return parseFloat(text.replace(/[^0-9.-]/g, "")) || 0;
+    };
+    
+    const taxesVal = cleanNumber(taxesText);
+    const servicesVal = cleanNumber(servicesText);
+    
+    document.getElementById("prodTotalImpuestos").value = taxesVal.toFixed(2);
+    document.getElementById("prodTotalServicios").value = servicesVal.toFixed(2);
+    
+    recalculateProducts();
+}
+
+function recalculateProducts() {
+    const totalTaxes = parseFloat(document.getElementById("prodTotalImpuestos").value) || 0;
+    const totalServices = parseFloat(document.getElementById("prodTotalServicios").value) || 0;
+    
+    let totalEXW = 0;
+    productItems.forEach(item => {
+        item.amount = (item.qty || 0) * (item.exw || 0);
+        totalEXW += item.amount;
+    });
+    
+    document.getElementById("prodTotalEXW").value = totalEXW.toFixed(2);
+    
+    let totalQty = 0;
+    let totalLanded = 0;
+    
+    productItems.forEach(item => {
+        const p = totalEXW > 0 ? (item.amount / totalEXW) : 0;
+        item.proratedTaxes = totalTaxes * p;
+        item.proratedServices = totalServices * p;
+        item.landedTotal = item.amount + item.proratedTaxes + item.proratedServices;
+        
+        item.unitLandedCost = (item.qty > 0) ? (item.landedTotal / item.qty) : 0;
+        
+        totalQty += (item.qty || 0);
+        totalLanded += item.landedTotal;
+    });
+    
+    localStorage.setItem("msiProductItems", JSON.stringify(productItems));
+    
+    const tbody = document.getElementById("productsTableBody");
+    if (tbody) {
+        if (productItems.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="7" style="padding: 16px; text-align: center; color: var(--text-muted);">No hay productos registrados en la lista. Agregue manualmente o importe un archivo Excel.</td></tr>`;
+        } else {
+            tbody.innerHTML = "";
+            productItems.forEach((item, idx) => {
+                const tr = document.createElement("tr");
+                tr.id = `prod-row-${idx}`;
+                tr.innerHTML = `
+                    <td style="padding: 8px 10px; text-align: center; font-weight: 600;">${idx + 1}</td>
+                    <td style="padding: 8px 10px;">
+                        <input type="text" class="table-input" value="${escapeHtml(item.description)}" oninput="updateProductValue(${idx}, 'description', this.value)">
+                    </td>
+                    <td style="padding: 8px 10px;">
+                        <input type="number" class="table-input num-input" min="0" step="1" value="${item.qty}" oninput="updateProductValue(${idx}, 'qty', parseInt(this.value) || 0)">
+                    </td>
+                    <td style="padding: 8px 10px;">
+                        <input type="number" class="table-input num-input" min="0" step="0.01" value="${item.exw}" oninput="updateProductValue(${idx}, 'exw', parseFloat(this.value) || 0)">
+                    </td>
+                    <td style="padding: 8px 10px; text-align: right; font-weight: 600; color: var(--text-main);">
+                        $ ${item.amount.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                    </td>
+                    <td style="padding: 8px 10px; text-align: right; font-weight: 700; background-color: rgba(16, 185, 129, 0.05); color: #1b5e20;">
+                        $ ${item.unitLandedCost.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                    </td>
+                    <td style="padding: 8px 10px; text-align: right;">
+                        <button class="btn-delete" onclick="deleteProductRow(${idx})" title="Eliminar fila">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+    }
+    
+    document.getElementById("totalQtySum").textContent = totalQty;
+    document.getElementById("totalAmountSum").textContent = `$ ${totalEXW.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    document.getElementById("totalLandedCostSum").textContent = "";
+}
+
+function addProductRow() {
+    productItems.push({
+        description: "NUEVO PRODUCTO",
+        qty: 1,
+        exw: 0.0,
+        amount: 0.0,
+        unitLandedCost: 0
+    });
+    recalculateProducts();
+}
+
+function deleteProductRow(index) {
+    productItems.splice(index, 1);
+    recalculateProducts();
+}
+
+function updateProductValue(index, field, value) {
+    if (productItems[index]) {
+        productItems[index][field] = value;
+        if (field === 'qty' || field === 'exw') {
+            productItems[index].amount = (productItems[index].qty || 0) * (productItems[index].exw || 0);
+        }
+        
+        const totalTaxes = parseFloat(document.getElementById("prodTotalImpuestos").value) || 0;
+        const totalServices = parseFloat(document.getElementById("prodTotalServicios").value) || 0;
+        
+        let totalEXW = 0;
+        productItems.forEach(item => {
+            item.amount = (item.qty || 0) * (item.exw || 0);
+            totalEXW += item.amount;
+        });
+        
+        document.getElementById("prodTotalEXW").value = totalEXW.toFixed(2);
+        
+        let totalQty = 0;
+        let totalLanded = 0;
+        
+        productItems.forEach((item, idx) => {
+            const p = totalEXW > 0 ? (item.amount / totalEXW) : 0;
+            item.proratedTaxes = totalTaxes * p;
+            item.proratedServices = totalServices * p;
+            item.landedTotal = item.amount + item.proratedTaxes + item.proratedServices;
+            item.unitLandedCost = (item.qty > 0) ? (item.landedTotal / item.qty) : 0;
+            
+            totalQty += (item.qty || 0);
+            totalLanded += item.landedTotal;
+            
+            const tr = document.getElementById(`prod-row-${idx}`);
+            if (tr) {
+                const tds = tr.getElementsByTagName("td");
+                if (tds.length >= 6) {
+                    tds[4].textContent = `$ ${item.amount.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+                    tds[5].textContent = `$ ${item.unitLandedCost.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+                }
+            }
+        });
+        
+        document.getElementById("totalQtySum").textContent = totalQty;
+        document.getElementById("totalAmountSum").textContent = `$ ${totalEXW.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+        document.getElementById("totalLandedCostSum").textContent = `$ ${totalLanded.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+        
+        localStorage.setItem("msiProductItems", JSON.stringify(productItems));
+    }
+}
+
+function clearProductsTable() {
+    showConfirm(
+        "Limpiar Tabla",
+        "¿Está seguro de que desea eliminar todos los productos de la lista?",
+        () => {
+            productItems = [];
+            localStorage.setItem("msiProductItems", JSON.stringify(productItems));
+            recalculateProducts();
+            showToast("Tabla Limpiada", "Se eliminaron todos los productos de la tabla.", "info");
+        }
+    );
+}
+
+function importExcelProducts(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const data = e.target.result;
+            const workbook = XLSX.read(data, { type: 'binary' });
+            
+            const sheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[sheetName];
+            
+            const cellO2 = worksheet['O2'];
+            const cellO3 = worksheet['O3'];
+            
+            if (cellO2 && typeof cellO2.v === 'number') {
+                document.getElementById("prodTotalImpuestos").value = cellO2.v.toFixed(2);
+            }
+            if (cellO3 && typeof cellO3.v === 'number') {
+                document.getElementById("prodTotalServicios").value = cellO3.v.toFixed(2);
+            }
+            
+            // Dynamic Header Scanning
+            let headerRowIndex = -1;
+            let colIndexDesc = -1;
+            let colIndexQty = -1;
+            let colIndexExw = -1;
+            
+            for (let r = 1; r <= 15; r++) {
+                let cols = [];
+                for (let c = 0; c < 16; c++) {
+                    const colLetter = String.fromCharCode(65 + c);
+                    const cell = worksheet[`${colLetter}${r}`];
+                    const val = cell ? (cell.v || "").toString().toUpperCase().trim() : "";
+                    cols.push({ val: val, idx: c });
+                }
+                
+                let hasDesc = false;
+                let hasQty = false;
+                let hasExw = false;
+                
+                let foundDescIdx = -1;
+                let foundQtyIdx = -1;
+                let foundExwIdx = -1;
+                
+                // 1. Match Description
+                cols.forEach(col => {
+                    if (col.val.includes("DESCRIPTION") || col.val.includes("DESCRIPCIÓN") || col.val.includes("DESCRIPCION")) {
+                        hasDesc = true;
+                        foundDescIdx = col.idx;
+                    }
+                });
+                
+                // 2. Match Qty
+                cols.forEach(col => {
+                    if (col.val.includes("QTY") || col.val.includes("CANTIDAD") || col.val.includes("CANT")) {
+                        hasQty = true;
+                        foundQtyIdx = col.idx;
+                    }
+                });
+                
+                // 3. Match EXW / FOB / Unit Price (at origin)
+                // First pass: try to find an EXW or FOB column that is not a total/amount
+                cols.forEach(col => {
+                    if ((col.val.includes("EXW") || col.val.includes("FOB")) && !col.val.includes("TOTAL") && !col.val.includes("AMOUNT")) {
+                        hasExw = true;
+                        foundExwIdx = col.idx;
+                    }
+                });
+                
+                // Second pass: if not found, look for "UNITARIO" (excluding local costs/totals)
+                if (!hasExw) {
+                    cols.forEach(col => {
+                        if (col.val.includes("UNITARIO") && !col.val.includes("TOTAL") && !col.val.includes("AMOUNT") && !col.val.includes("ALMACEN") && !col.val.includes("PUESTO") && !col.val.includes("IMPORTADOR")) {
+                            hasExw = true;
+                            foundExwIdx = col.idx;
+                        }
+                    });
+                }
+                
+                if (hasDesc && hasQty && hasExw) {
+                    headerRowIndex = r;
+                    colIndexDesc = foundDescIdx;
+                    colIndexQty = foundQtyIdx;
+                    colIndexExw = foundExwIdx;
+                    break;
+                }
+            }
+            
+            const parsedItems = [];
+            
+            if (headerRowIndex !== -1) {
+                let r = headerRowIndex + 1;
+                let emptyCount = 0;
+                const colLetterDesc = String.fromCharCode(65 + colIndexDesc);
+                const colLetterQty = String.fromCharCode(65 + colIndexQty);
+                const colLetterExw = String.fromCharCode(65 + colIndexExw);
+                
+                while (emptyCount < 5) {
+                    const cellDesc = worksheet[`${colLetterDesc}${r}`];
+                    const descVal = cellDesc ? (cellDesc.v || "").toString().trim() : "";
+                    
+                    if (!descVal) {
+                        emptyCount++;
+                        r++;
+                        continue;
+                    }
+                    emptyCount = 0;
+                    
+                    const cellQty = worksheet[`${colLetterQty}${r}`];
+                    const cellExw = worksheet[`${colLetterExw}${r}`];
+                    
+                    const qtyVal = cellQty ? parseInt(cellQty.v) || 0 : 0;
+                    const exwVal = cellExw ? parseFloat(cellExw.v) || 0 : 0;
+                    
+                    parsedItems.push({
+                        description: descVal,
+                        qty: qtyVal,
+                        exw: exwVal,
+                        amount: qtyVal * exwVal,
+                        unitLandedCost: 0
+                    });
+                    r++;
+                }
+            } else {
+                // Fallback to old hardcoded format if no headers found
+                let r = 6;
+                let emptyCount = 0;
+                while (emptyCount < 5) {
+                    const cellB = worksheet[`B${r}`];
+                    const descVal = cellB ? (cellB.v || "").toString().trim() : "";
+                    
+                    if (!descVal) {
+                        emptyCount++;
+                        r++;
+                        continue;
+                    }
+                    emptyCount = 0;
+                    
+                    const cellD = worksheet[`D${r}`];
+                    const cellE = worksheet[`E${r}`];
+                    
+                    const qtyVal = cellD ? parseInt(cellD.v) || 0 : 0;
+                    const exwVal = cellE ? parseFloat(cellE.v) || 0 : 0;
+                    
+                    parsedItems.push({
+                        description: descVal,
+                        qty: qtyVal,
+                        exw: exwVal,
+                        amount: qtyVal * exwVal,
+                        unitLandedCost: 0
+                    });
+                    r++;
+                }
+            }
+            
+            if (parsedItems.length > 0) {
+                productItems = parsedItems;
+                localStorage.setItem("msiProductItems", JSON.stringify(productItems));
+                recalculateProducts();
+                showToast("Importación Exitosa", `Se importaron ${parsedItems.length} productos del archivo Excel.`, "success");
+            } else {
+                showToast("Error de Lectura", "No se encontraron productos válidos en el archivo. Verifique el formato.", "error");
+            }
+            
+        } catch(err) {
+            console.error(err);
+            showToast("Error de Importación", "No se pudo leer el archivo Excel: " + err.message, "error");
+        }
+    };
+    reader.readAsBinaryString(file);
+    event.target.value = "";
+}
+
+function exportExcelProducts() {
+    const ws_data = [];
+    ws_data.push([]);
+    
+    const row2 = [];
+    row2[11] = "IMPUESTOS DE ADUANA";
+    row2[14] = parseFloat(document.getElementById("prodTotalImpuestos").value) || 0;
+    ws_data.push(row2);
+    
+    const row3 = [];
+    row3[11] = "SERVICIOS LOGISTICOS";
+    row3[14] = parseFloat(document.getElementById("prodTotalServicios").value) || 0;
+    ws_data.push(row3);
+    
+    const row4 = [];
+    const clientVal = document.getElementById("indCliente").value.trim() || "Cliente";
+    row4[0] = `Cliente: ${clientVal} | Reporte de Precios Unitarios de Importación`;
+    ws_data.push(row4);
+    
+    const headers = [
+        "No.", 
+        "DESCRIPTION", 
+        "Product Image", 
+        "QTY", 
+        "EXW(USD)", 
+        "AMOUNT", 
+        "PRECIO UNITARIO", 
+        "IMPUESTOS", 
+        "SERVICIOS LOGISTICOS", 
+        "PRECIO TOTAL", 
+        "IMPUESTOS DE ADUANA", 
+        "SERVICIOS LOGISTICOS", 
+        "PRECIO TOTAL PUESTO EN EL ALMACEN DEL IMPORTADOR", 
+        "PRECIO UNITARIO PUESTO EN EL ALMACEN",
+        "", 
+        ""  
+    ];
+    ws_data.push(headers);
+    
+    const startRow = 6;
+    productItems.forEach((item, idx) => {
+        const row = [
+            idx + 1,
+            item.description,
+            "", 
+            item.qty,
+            item.exw,
+            0, 
+            0, 
+            0, 
+            0, 
+            0, 
+            0, 
+            0, 
+            0, 
+            0, 
+            "", 
+            0  
+        ];
+        ws_data.push(row);
+    });
+    
+    const totalRowIndex = startRow + productItems.length;
+    const totalRow = [];
+    totalRow[3] = 0;
+    totalRow[5] = 0; 
+    ws_data.push(totalRow);
+    
+    const ws = XLSX.utils.aoa_to_sheet(ws_data);
+    
+    // Define styles for Excel columns and rows
+    const headerStyle = {
+        fill: { patternType: "solid", fgColor: { rgb: "111827" } },
+        font: { name: "Segoe UI", sz: 10, bold: true, color: { rgb: "FFFFFF" } },
+        alignment: { horizontal: "center", vertical: "center" },
+        border: {
+            top: { style: "thin", color: { rgb: "D1D5DB" } },
+            bottom: { style: "thin", color: { rgb: "D1D5DB" } },
+            left: { style: "thin", color: { rgb: "D1D5DB" } },
+            right: { style: "thin", color: { rgb: "D1D5DB" } }
+        }
+    };
+    
+    const dataStyleLeft = {
+        font: { name: "Segoe UI", sz: 10 },
+        alignment: { horizontal: "left", vertical: "center" },
+        border: {
+            top: { style: "thin", color: { rgb: "E5E7EB" } },
+            bottom: { style: "thin", color: { rgb: "E5E7EB" } },
+            left: { style: "thin", color: { rgb: "E5E7EB" } },
+            right: { style: "thin", color: { rgb: "E5E7EB" } }
+        }
+    };
+    
+    const dataStyleCenter = {
+        font: { name: "Segoe UI", sz: 10 },
+        alignment: { horizontal: "center", vertical: "center" },
+        border: {
+            top: { style: "thin", color: { rgb: "E5E7EB" } },
+            bottom: { style: "thin", color: { rgb: "E5E7EB" } },
+            left: { style: "thin", color: { rgb: "E5E7EB" } },
+            right: { style: "thin", color: { rgb: "E5E7EB" } }
+        }
+    };
+    
+    const dataStyleRight = {
+        font: { name: "Segoe UI", sz: 10 },
+        alignment: { horizontal: "right", vertical: "center" },
+        border: {
+            top: { style: "thin", color: { rgb: "E5E7EB" } },
+            bottom: { style: "thin", color: { rgb: "E5E7EB" } },
+            left: { style: "thin", color: { rgb: "E5E7EB" } },
+            right: { style: "thin", color: { rgb: "E5E7EB" } }
+        }
+    };
+    
+    const totalStyle = {
+        font: { name: "Segoe UI", sz: 10, bold: true },
+        alignment: { vertical: "center" },
+        border: {
+            top: { style: "thin", color: { rgb: "111827" } },
+            bottom: { style: "double", color: { rgb: "111827" } }
+        }
+    };
+
+    const totalStyleLeft = {
+        ...totalStyle,
+        alignment: { horizontal: "left", vertical: "center" }
+    };
+
+    const totalStyleRight = {
+        ...totalStyle,
+        alignment: { horizontal: "right", vertical: "center" }
+    };
+    
+    // Title styling
+    ws['A4'] = { 
+        t: 's', 
+        v: `Cliente: ${clientVal} | Reporte de Precios Unitarios de Importación`, 
+        s: { font: { name: "Segoe UI", sz: 11, bold: true }, alignment: { horizontal: "left", vertical: "center" } } 
+    };
+
+    // Header styling
+    const colLetters = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P"];
+    colLetters.slice(0, 7).forEach(col => {
+        if (ws[`${col}5`]) ws[`${col}5`].s = headerStyle;
+    });
+    
+    productItems.forEach((item, idx) => {
+        const rNum = startRow + idx;
+        
+        ws[`D${rNum}`] = { t: 'n', v: item.qty, z: '#,##0', s: dataStyleRight };
+        ws[`E${rNum}`] = { t: 'n', v: item.exw, z: '"$"#,##0.00', s: dataStyleRight };
+        ws[`F${rNum}`] = { t: 'n', f: `D${rNum}*E${rNum}`, v: item.qty * item.exw, z: '"$"#,##0.00', s: dataStyleRight };
+        ws[`P${rNum}`] = { t: 'n', f: `F${rNum}/$F$${totalRowIndex}`, v: productItems.length > 0 ? (item.amount / (productItems.reduce((acc, curr) => acc + curr.amount, 0) || 1)) : 0, z: '0.00%' };
+        ws[`K${rNum}`] = { t: 'n', f: `$O$2*P${rNum}`, v: item.proratedTaxes, z: '"$"#,##0.00' };
+        ws[`L${rNum}`] = { t: 'n', f: `$O$3*P${rNum}`, v: item.proratedServices, z: '"$"#,##0.00' };
+        ws[`M${rNum}`] = { t: 'n', f: `F${rNum}+K${rNum}+L${rNum}`, v: item.landedTotal, z: '"$"#,##0.00' };
+        ws[`N${rNum}`] = { t: 'n', f: `M${rNum}/D${rNum}`, v: item.unitLandedCost, z: '"$"#,##0.00' };
+        ws[`H${rNum}`] = { t: 'n', f: `K${rNum}`, v: item.proratedTaxes, z: '"$"#,##0.00' };
+        ws[`I${rNum}`] = { t: 'n', f: `L${rNum}`, v: item.proratedServices, z: '"$"#,##0.00' };
+        ws[`J${rNum}`] = { t: 'n', f: `M${rNum}`, v: item.landedTotal, z: '"$"#,##0.00' };
+        ws[`G${rNum}`] = { t: 'n', f: `J${rNum}/D${rNum}`, v: item.unitLandedCost, z: '"$"#,##0.00', s: dataStyleRight };
+        
+        ws[`A${rNum}`] = { t: 'n', v: idx + 1, s: dataStyleCenter };
+        ws[`B${rNum}`] = { t: 's', v: item.description, s: dataStyleLeft };
+        ws[`C${rNum}`] = { t: 's', v: "", s: dataStyleCenter };
+    });
+    
+    ws[`A${totalRowIndex}`] = { t: 's', v: 'TOTALES:', s: totalStyleLeft };
+    ws[`B${totalRowIndex}`] = { t: 's', v: '', s: totalStyle };
+    ws[`C${totalRowIndex}`] = { t: 's', v: '', s: totalStyle };
+    ws[`D${totalRowIndex}`] = { t: 'n', f: `SUM(D6:D${totalRowIndex-1})`, v: productItems.reduce((acc, curr) => acc + curr.qty, 0), z: '#,##0', s: totalStyleRight };
+    ws[`E${totalRowIndex}`] = { t: 's', v: '', s: totalStyle };
+    ws[`F${totalRowIndex}`] = { t: 'n', f: `SUM(F6:F${totalRowIndex-1})`, v: productItems.reduce((acc, curr) => acc + curr.amount, 0), z: '"$"#,##0.00', s: totalStyleRight };
+    ws[`G${totalRowIndex}`] = { t: 's', v: '', s: totalStyle };
+    
+    ws['O2'] = { t: 'n', v: parseFloat(document.getElementById("prodTotalImpuestos").value) || 0, z: '"$"#,##0.00' };
+    ws['O3'] = { t: 'n', v: parseFloat(document.getElementById("prodTotalServicios").value) || 0, z: '"$"#,##0.00' };
+
+    ws['!merges'] = [
+        { s: { r: 3, c: 0 }, e: { r: 3, c: 9 } }
+    ];
+
+    ws['!cols'] = [
+        { wch: 6 },  // A: No.
+        { wch: 35 }, // B: DESCRIPTION
+        { wch: 15 }, // C: Product Image
+        { wch: 10 }, // D: QTY
+        { wch: 15 }, // E: EXW(USD)
+        { wch: 15 }, // F: AMOUNT
+        { wch: 25 }, // G: PRECIO UNITARIO (Visible)
+        { wch: 15, hidden: true }, // H: IMPUESTOS (Hidden)
+        { wch: 22, hidden: true }, // I: SERVICIOS LOGISTICOS (Hidden)
+        { wch: 18, hidden: true }, // J: PRECIO TOTAL (Hidden)
+        { wch: 15, hidden: true }, // K: IMPUESTOS DE ADUANA (Hidden)
+        { wch: 15, hidden: true }, // L: SERVICIOS LOGISTICOS (Hidden)
+        { wch: 15, hidden: true }, // M: PRECIO TOTAL ALMACEN (Hidden)
+        { wch: 15, hidden: true }, // N: PRECIO UNITARIO ALMACEN (Hidden)
+        { wch: 15, hidden: true }, // O: TOTALS PARAMS (Hidden)
+        { wch: 10, hidden: true }  // P: PRORATE FACTOR (Hidden)
+    ];
+
+    const rowHeights = [];
+    rowHeights.push({ hpt: 18 }); // Row 1
+    rowHeights.push({ hpt: 20 }); // Row 2
+    rowHeights.push({ hpt: 20 }); // Row 3
+    rowHeights.push({ hpt: 24 }); // Row 4
+    rowHeights.push({ hpt: 28 }); // Row 5 (headers)
+    for (let i = 0; i < productItems.length; i++) {
+        rowHeights.push({ hpt: 20 }); // Row 6+
+    }
+    rowHeights.push({ hpt: 24 }); // Totals Row
+    ws['!rows'] = rowHeights;
+    
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Table 1");
+    
+    const filename = `Precio_Unitario_Productos_${clientVal.replace(/\s+/g, "_")}.xlsx`;
+    XLSX.writeFile(wb, filename);
+}
+
+function printProductsPdf() {
+    const today = new Date();
+    const formatDate = (date) => {
+        const dd = String(date.getDate()).padStart(2, '0');
+        const mm = String(date.getMonth() + 1).padStart(2, '0');
+        const yyyy = date.getFullYear();
+        return `${dd}/${mm}/${yyyy}`;
+    };
+    
+    document.getElementById("pdfFechaProd").textContent = formatDate(today);
+    
+    const clientVal = document.getElementById("indCliente").value.trim() || "Cliente";
+    document.getElementById("pdfClienteNombreProd").textContent = clientVal;
+    
+    const totalTaxes = parseFloat(document.getElementById("prodTotalImpuestos").value) || 0;
+    const totalServices = parseFloat(document.getElementById("prodTotalServicios").value) || 0;
+    
+    document.getElementById("pdfTotalImpuestosProd").textContent = `$ ${totalTaxes.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    document.getElementById("pdfTotalServiciosProd").textContent = `$ ${totalServices.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    
+    const pdfTbody = document.getElementById("pdfProductsTableBody");
+    if (pdfTbody) {
+        pdfTbody.innerHTML = "";
+        
+        let totalQty = 0;
+        let totalEXW = 0;
+        let totalLanded = 0;
+        
+        productItems.forEach((item, idx) => {
+            const tr = document.createElement("tr");
+            tr.innerHTML = `
+                <td style="padding: 4px; text-align: center;">${idx + 1}</td>
+                <td style="padding: 4px;">${escapeHtml(item.description)}</td>
+                <td style="padding: 4px; text-align: right;">${item.qty}</td>
+                <td style="padding: 4px; text-align: right;">$ ${item.exw.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                <td style="padding: 4px; text-align: right;">$ ${item.amount.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                <td style="padding: 4px; text-align: right; font-weight: 700; background-color: #f0fdf4;">$ ${item.unitLandedCost.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+            `;
+            pdfTbody.appendChild(tr);
+            
+            totalQty += item.qty;
+            totalEXW += item.amount;
+            totalLanded += item.landedTotal;
+        });
+        
+        document.getElementById("pdfTotalQtyProd").textContent = totalQty;
+        document.getElementById("pdfTotalAmountProd").textContent = `$ ${totalEXW.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+        document.getElementById("pdfTotalLandedCostProd").textContent = "";
+    }
+    
+    const pdfEmpresa = document.getElementById("admPdfEmpresa") ? document.getElementById("admPdfEmpresa").value : "MSI ADUANAS PERU CARGO S.A.C.";
+    const pdfSub1 = document.getElementById("admPdfSub1") ? document.getElementById("admPdfSub1").value : "RUC: 20608934571 | Av. Elmer Faucett 150, Callao - Perú";
+    const pdfSub2 = document.getElementById("admPdfSub2") ? document.getElementById("admPdfSub2").value : "Contacto: cotizaciones@msicargo.com | Tel: (01) 451-9988";
+    
+    if (document.getElementById("pdfEmpresaNombreProd")) document.getElementById("pdfEmpresaNombreProd").textContent = pdfEmpresa;
+    if (document.getElementById("pdfEmpresaSub1Prod")) document.getElementById("pdfEmpresaSub1Prod").textContent = pdfSub1;
+    if (document.getElementById("pdfEmpresaSub2Prod")) document.getElementById("pdfEmpresaSub2Prod").textContent = pdfSub2;
+    
+    const sanitizeFilename = (str) => {
+        return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+                  .replace(/[^a-zA-Z0-9\s-_]/g, "")
+                  .trim()
+                  .replace(/\s+/g, "_");
+    };
+    
+    const clientClean = sanitizeFilename(clientVal);
+    const originalTitle = document.title;
+    
+    let docTitle = `Lista_Precios`;
+    if (clientClean && clientClean !== "Cliente") {
+        docTitle += `_${clientClean}`;
+    }
+    document.title = docTitle;
+    
+    document.body.classList.add("print-products");
+    
+    window.print();
+    
+    document.body.classList.remove("print-products");
+    document.title = originalTitle;
 }
 
