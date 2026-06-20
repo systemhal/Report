@@ -581,6 +581,23 @@ body.dark-mode .admin-login-popover {
     margin-top: 2px;
 }
 
+.client-note {
+    font-size: 11px;
+    color: var(--text-muted);
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin-top: 15px;
+    line-height: 1.4;
+}
+
+.client-note i {
+    color: var(--primary-light);
+    font-size: 13px;
+    margin-top: 2px;
+    flex-shrink: 0;
+}
+
 .form-group input:focus, 
 .form-group select:focus {
     outline: none;

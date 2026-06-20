@@ -306,8 +306,8 @@ function calculateIndividual() {
     document.getElementById("resIndServiciosTotal").textContent = formatCurrency(servicios_logicos_totales, "USD");
 
     // 14. Populate Printable PDF Proforma
-    document.getElementById("pdfClienteNombre").textContent = document.getElementById("indCliente").value || "Raúl Bardales";
-    document.getElementById("pdfProducto").textContent = document.getElementById("indProducto").value || "Motor Eléctrico Industrial + Accesorios";
+    document.getElementById("pdfClienteNombre").textContent = document.getElementById("indCliente").value;
+    document.getElementById("pdfProducto").textContent = document.getElementById("indProducto").value;
 
     // Read and update customizable PDF details from Admin Panel
     const pdfEmpresa = document.getElementById("admPdfEmpresa") ? document.getElementById("admPdfEmpresa").value : "MSI ADUANAS PERU CARGO S.A.C.";
@@ -359,10 +359,10 @@ function calculateIndividual() {
     document.getElementById("pdfIncoterm").textContent = incoterm;
     
     // Format origin text
-    let originText = "Qingdao / Callao";
-    if (origen === "eeuu") originText = "Miami (EEUU) / Callao";
-    else if (origen === "europa") originText = "Rotterdam (Europa) / Callao";
-    else if (origen === "otros") originText = "Origen Internacional / Callao";
+    let originText = "China / Callao";
+    if (origen === "eeuu") originText = "EEUU / Callao";
+    else if (origen === "europa") originText = "Europa / Callao";
+    else if (origen === "otros") originText = "Otros / Callao";
     document.getElementById("pdfOrigen").textContent = originText;
     
     document.getElementById("pdfPeso").textContent = `${peso_kg.toFixed(1)} kg`;
@@ -385,17 +385,17 @@ function calculateIndividual() {
     document.getElementById("pdfServBl").textContent = formatCurrency(bl_fee_comercial, "USD");
     document.getElementById("pdfServPickUp").textContent = formatCurrency(pick_up_comercial, "USD");
     document.getElementById("pdfServOrigen").textContent = formatCurrency(gastos_origen_comercial, "USD");
-    document.getElementById("pdfServSeguro").textContent = formatCurrency(seguro_comercial, "USD");
+    document.getElementById("pdfServSeguro").textContent = formatCurrency(hasCargo ? seguro_comercial : 0, "USD");
     document.getElementById("pdfServDoc").textContent = formatCurrency(doc_fee_comercial, "USD");
     document.getElementById("pdfServDescargaLcl").textContent = formatCurrency(descarga_comercial, "USD");
     document.getElementById("pdfServVbLcl").textContent = formatCurrency(visto_bueno_lcl_comercial, "USD");
-    document.getElementById("pdfServTranspInterno").textContent = formatCurrency(transporte_interno, "USD");
+    document.getElementById("pdfServTranspInterno").textContent = formatCurrency(hasCargo ? transporte_interno : 0, "USD");
     document.getElementById("pdfServAlmacenaje").textContent = formatCurrency(almacenaje_lcl_comercial, "USD");
     document.getElementById("pdfServVbFcl").textContent = formatCurrency(visto_bueno_fcl_comercial, "USD");
     document.getElementById("pdfServGateIn").textContent = formatCurrency(gate_in_fcl_comercial, "USD");
     document.getElementById("pdfServDescargaPuerto").textContent = formatCurrency(descarga_puerto_fcl_comercial, "USD");
-    document.getElementById("pdfServComision").textContent = formatCurrency(comision_aduana, "USD");
-    document.getElementById("pdfServGastosOp").textContent = formatCurrency(gastos_operativos, "USD");
+    document.getElementById("pdfServComision").textContent = formatCurrency(hasCargo ? comision_aduana : 0, "USD");
+    document.getElementById("pdfServGastosOp").textContent = formatCurrency(hasCargo ? gastos_operativos : 0, "USD");
     document.getElementById("pdfServIgv").textContent = formatCurrency(igv_servicios, "USD");
     document.getElementById("pdfServTotal").textContent = formatCurrency(servicios_logicos_totales, "USD");
     
@@ -434,13 +434,35 @@ function printPdf() {
     
     // Generate random quote number if not set or just a new one for unique printouts
     const randomNum = Math.floor(1000 + Math.random() * 9000);
-    document.getElementById("pdfCotizacionNum").textContent = `MSI-${today.getFullYear()}-J${randomNum}`;
+    const quoteNum = `MSI-${today.getFullYear()}-J${randomNum}`;
+    document.getElementById("pdfCotizacionNum").textContent = quoteNum;
     
     // Save simulation to history
     saveCurrentQuoteToHistory();
 
+    // Suggest a professional filename by temporarily modifying document.title
+    const clientVal = document.getElementById("indCliente").value.trim() || "Cliente";
+    const productVal = document.getElementById("indProducto").value.trim() || "Producto";
+    
+    const sanitizeFilename = (str) => {
+        // Remove accents and special characters that are illegal in file names, replace spaces with underscores
+        return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+                  .replace(/[^a-zA-Z0-9\s-_]/g, "")
+                  .trim()
+                  .replace(/\s+/g, "_");
+    };
+
+    const clientClean = sanitizeFilename(clientVal);
+    const productClean = sanitizeFilename(productVal);
+    
+    const originalTitle = document.title;
+    document.title = `Cotizacion_${quoteNum}_${clientClean}_${productClean}`;
+
     // Trigger print dialog
     window.print();
+
+    // Restore original title
+    document.title = originalTitle;
 }
 
 // --------------------------------------------------------------------------
