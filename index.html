@@ -32,14 +32,14 @@
                 <button class="tab-btn active" id="tabIndividual" onclick="switchTab('individual')">
                     <i class="fa-solid fa-calculator"></i> <span>Calculadora Cliente</span>
                 </button>
-                <button class="tab-btn" id="tabProductos" onclick="switchTab('productos')">
-                    <i class="fa-solid fa-tags"></i> <span>Precio de Productos</span>
-                </button>
                 <button class="tab-btn" id="tabPersonal" onclick="switchTab('personal')" style="display: none;">
                     <i class="fa-solid fa-gears"></i> <span>Panel MSI (Tarifas)</span>
                 </button>
                 <button class="tab-btn" id="tabGuia" onclick="switchTab('guia')" style="display: none;">
                     <i class="fa-solid fa-book-open"></i> <span>Guía de Conceptos</span>
+                </button>
+                <button class="tab-btn" id="tabProductos" onclick="switchTab('productos')">
+                    <i class="fa-solid fa-tags"></i> <span>Precio de Productos</span>
                 </button>
             </nav>
 
@@ -104,7 +104,7 @@
                                 </div>
                             </div>
 
-                            <div class="form-row four-cols">
+                            <div class="form-row three-cols">
                                 <div class="form-group">
                                     <label for="indValorMercancia"><i class="fa-solid fa-dollar-sign"></i> Valor de la Mercadería (USD)</label>
                                     <input type="number" id="indValorMercancia" min="0" step="0.01" placeholder="0.00" required>
@@ -118,11 +118,6 @@
                                     <label for="indVolumen"><i class="fa-solid fa-cube"></i> Volumen Total (CBM)</label>
                                     <input type="number" id="indVolumen" min="0" step="0.01" placeholder="0.00" required>
                                     <span class="input-info-text"><i class="fa-solid fa-circle-info"></i> Mín. 1 CBM para LCL</span>
-                                </div>
-                                <div class="form-group">
-                                    <label for="indCantidad"><i class="fa-solid fa-calculator"></i> Cantidad de Unidades</label>
-                                    <input type="number" id="indCantidad" min="1" step="1" placeholder="1" required>
-                                    <span class="input-info-text"><i class="fa-solid fa-circle-info"></i> Para prorratear costos</span>
                                 </div>
                             </div>
                         </div>
@@ -200,17 +195,6 @@
                         <div class="results-dashboard-row">
                             <!-- Left: Summary Pills -->
                             <div class="pills-column">
-                                <!-- Precio Unitario Pill (Green Highlighted) -->
-                                <div class="summary-pill success-pill" id="pillUnitPrice">
-                                    <div class="pill-text-container">
-                                        <span class="pill-label text-green-label">Precio Unitario</span>
-                                        <span class="pill-note">Costo / (1 - Margen %)</span>
-                                    </div>
-                                    <div class="pill-values-container" style="display: flex; flex-direction: column; align-items: flex-end;">
-                                        <span class="pill-value text-green" id="resUnitPriceUsd">$ 0.00</span>
-                                        <span class="pill-subvalue" id="resUnitPricePen" style="font-size: 10px; color: var(--text-muted); font-weight: 600;">S/ 0.00</span>
-                                    </div>
-                                </div>
 
                                 <div class="summary-pill">
                                     <div class="pill-text-container">
@@ -380,7 +364,7 @@
         <div class="tab-content" id="contentProductos">
             <div class="panel products-panel">
                 <div class="panel-header">
-                    <h2><i class="fa-solid fa-tags"></i> Cálculo de Precio Unitario por Prorrateo</h2>
+                    <h2><i class="fa-solid fa-tags"></i> Cálculo de Precio Unitario</h2>
                     <div class="panel-actions" style="display: flex; gap: 8px;">
                         <button type="button" class="btn-clear-fields" onclick="clearProductsTable()">
                             <i class="fa-solid fa-eraser"></i> Limpiar Tabla
@@ -390,16 +374,16 @@
 
                 <!-- Inputs Informativos / Base del Prorrateo -->
                 <div class="form-section-card" style="margin-bottom: 24px;">
-                    <h3 class="form-section-title"><i class="fa-solid fa-scale-balanced"></i> Valores Base de Prorrateo</h3>
+                    <h3 class="form-section-title"><i class="fa-solid fa-scale-balanced"></i> Valores Base</h3>
                     <div class="form-row three-cols">
                         <div class="form-group">
                             <label for="prodTotalImpuestos"><i class="fa-solid fa-building-columns"></i> Total Impuestos Aduana (USD)</label>
-                            <input type="number" id="prodTotalImpuestos" min="0" step="0.01" value="0.00" oninput="recalculateProducts()">
+                            <input type="number" id="prodTotalImpuestos" min="0" step="0.01" value="" oninput="recalculateProducts()">
                             <span class="input-info-text"><i class="fa-solid fa-circle-info"></i> Sincronizado de pestaña 1</span>
                         </div>
                         <div class="form-group">
                             <label for="prodTotalServicios"><i class="fa-solid fa-truck-flatbed"></i> Total Servicios Logísticos (USD)</label>
-                            <input type="number" id="prodTotalServicios" min="0" step="0.01" value="0.00" oninput="recalculateProducts()">
+                            <input type="number" id="prodTotalServicios" min="0" step="0.01" value="" oninput="recalculateProducts()">
                             <span class="input-info-text"><i class="fa-solid fa-circle-info"></i> Sincronizado de pestaña 1</span>
                         </div>
                         <div class="form-group">

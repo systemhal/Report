@@ -20,7 +20,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Client view input IDs (Quantity and Margin reallocated to Admin)
     const clientInputIds = [
-        "indCliente", "indProducto", "indValorMercancia", "indPeso", "indVolumen", "indIncoterm", "indTransporte", "indOrigen", "indCantidad"
+        "indCliente", "indProducto", "indValorMercancia", "indPeso", "indVolumen", "indIncoterm", "indTransporte", "indOrigen"
     ];
     
     // Admin tariff input IDs
@@ -119,7 +119,8 @@ function calculateIndividual() {
     const incoterm = document.getElementById("indIncoterm").value;
     const transporte = document.getElementById("indTransporte").value;
     const origen = document.getElementById("indOrigen").value;
-    const cantidad = Math.max(parseFloat(document.getElementById("indCantidad").value) || 1, 1);
+    const cantidadEl = document.getElementById("indCantidad");
+    const cantidad = cantidadEl ? Math.max(parseFloat(cantidadEl.value) || 1, 1) : 1;
     const margen_comercial = parseFloat(document.getElementById("indMargen").value) || 0;
 
     // 2. Capture Admin Inputs
@@ -286,8 +287,10 @@ function calculateIndividual() {
     const resUnitLandedPenEl = document.getElementById("resUnitLandedPen");
     if (resUnitLandedPenEl) resUnitLandedPenEl.textContent = formatCurrency(unit_landed * tc, "PEN");
     
-    document.getElementById("resUnitPriceUsd").textContent = formatCurrency(price_net, "USD");
-    document.getElementById("resUnitPricePen").textContent = formatCurrency(price_net * tc, "PEN");
+    const resUnitPriceUsdEl = document.getElementById("resUnitPriceUsd");
+    if (resUnitPriceUsdEl) resUnitPriceUsdEl.textContent = formatCurrency(price_net, "USD");
+    const resUnitPricePenEl = document.getElementById("resUnitPricePen");
+    if (resUnitPricePenEl) resUnitPricePenEl.textContent = formatCurrency(price_net * tc, "PEN");
 
     // 12. Update UI Summary Card and Pills
     document.getElementById("resTotalImportacionUsd").textContent = formatCurrency(costo_total, "USD");
@@ -602,7 +605,7 @@ function saveTariffs() {
         "admSeguroComercial", "admDocFee", "admDescargaTn", "admVistoBueno",
         "admTransporteInterno", "admAlmacenajeVerde", "admVistoBuenoLinea", 
         "admGateIn", "admDescargaPuerto", "admComisionAduana", "admGastosOperativos",
-        "admArancel", "admPercepcion", "admTipoCambio", "indCantidad", "indMargen",
+        "admArancel", "admPercepcion", "admTipoCambio", "indMargen",
         "admPdfEmpresa", "admPdfSub1", "admPdfSub2", "admPdfBancoSoles", "admPdfBancoSolesCci",
         "admPdfBancoDolares", "admPdfBancoDolaresCci", "admPdfBancoRuc", "admPdfBancoRazon",
         "admPdfAsesorNombre", "admPdfAsesorCargo", "admPdfTerminos", "admGoogleSheetUrl"
@@ -1017,7 +1020,7 @@ function postToGoogleSheet() {
         "admSeguroComercial", "admDocFee", "admDescargaTn", "admVistoBueno",
         "admTransporteInterno", "admAlmacenajeVerde", "admVistoBuenoLinea", 
         "admGateIn", "admDescargaPuerto", "admComisionAduana", "admGastosOperativos",
-        "admArancel", "admPercepcion", "admTipoCambio", "indCantidad", "indMargen",
+        "admArancel", "admPercepcion", "admTipoCambio", "indMargen",
         "admPdfEmpresa", "admPdfSub1", "admPdfSub2", "admPdfBancoSoles", "admPdfBancoSolesCci",
         "admPdfBancoDolares", "admPdfBancoDolaresCci", "admPdfBancoRuc", "admPdfBancoRazon",
         "admPdfAsesorNombre", "admPdfAsesorCargo", "admPdfTerminos"
@@ -1141,7 +1144,6 @@ function clearClientFields() {
                 indValorMercancia: "",
                 indPeso: "",
                 indVolumen: "",
-                indCantidad: "",
                 indIncoterm: "EXW",
                 indTransporte: "maritimo",
                 indOrigen: "china"
@@ -1198,8 +1200,13 @@ function syncTotalsFromCalculator() {
     const taxesVal = cleanNumber(taxesText);
     const servicesVal = cleanNumber(servicesText);
     
-    document.getElementById("prodTotalImpuestos").value = taxesVal.toFixed(2);
-    document.getElementById("prodTotalServicios").value = servicesVal.toFixed(2);
+    if (taxesVal === 0 && servicesVal === 0) {
+        document.getElementById("prodTotalImpuestos").value = "";
+        document.getElementById("prodTotalServicios").value = "";
+    } else {
+        document.getElementById("prodTotalImpuestos").value = taxesVal.toFixed(2);
+        document.getElementById("prodTotalServicios").value = servicesVal.toFixed(2);
+    }
     
     recalculateProducts();
 }
