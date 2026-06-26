@@ -485,6 +485,17 @@ function printPdf() {
     const originalTitle = document.title;
     document.title = docTitle;
 
+    // Inject dynamic print page style for proforma (A4 with 5mm 7mm margins)
+    const styleEl = document.createElement("style");
+    styleEl.id = "print-proforma-page-style";
+    styleEl.innerHTML = `
+        @page {
+            size: A4 portrait;
+            margin: 5mm 7mm !important;
+        }
+    `;
+    document.head.appendChild(styleEl);
+
     // Add print class to body
     document.body.classList.add("print-proforma");
 
@@ -493,6 +504,13 @@ function printPdf() {
 
     // Cleanup
     document.body.classList.remove("print-proforma");
+    
+    // Remove dynamic page style
+    const styleElToRemove = document.getElementById("print-proforma-page-style");
+    if (styleElToRemove) {
+        styleElToRemove.remove();
+    }
+    
     document.title = originalTitle;
 }
 
@@ -1857,17 +1875,35 @@ function printProductsPdf() {
     const clientClean = sanitizeFilename(clientVal);
     const originalTitle = document.title;
     
-    let docTitle = `Lista_Precios`;
+    let docTitle = ` `;
     if (clientClean && clientClean !== "Cliente") {
         docTitle += `_${clientClean}`;
     }
     document.title = docTitle;
+    
+    // Inject dynamic print page style for products list (A4 with 22mm bottom margin)
+    const styleEl = document.createElement("style");
+    styleEl.id = "print-products-page-style";
+    styleEl.innerHTML = `
+        @page {
+            size: A4 portrait;
+            margin: 10mm 10mm 22mm 10mm !important;
+        }
+    `;
+    document.head.appendChild(styleEl);
     
     document.body.classList.add("print-products");
     
     window.print();
     
     document.body.classList.remove("print-products");
+    
+    // Remove dynamic page style
+    const styleElToRemove = document.getElementById("print-products-page-style");
+    if (styleElToRemove) {
+        styleElToRemove.remove();
+    }
+    
     document.title = originalTitle;
 }
 

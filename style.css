@@ -1777,6 +1777,10 @@ body.dark-mode .text-green-label {
     box-shadow: 0 5px 12px rgba(220, 38, 38, 0.3);
 }
 
+#printableProductList-watermark {
+    display: none !important;
+}
+
 @media print {
     @page {
         size: A4 portrait;
@@ -1792,6 +1796,12 @@ body.dark-mode .text-green-label {
         margin: 0 !important;
         padding: 0 !important;
         width: 100% !important;
+    }
+
+    /* Avoid page-breaks inside table rows */
+    .pdf-data-table tr {
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
     }
 
     .app-layout, 
@@ -2218,15 +2228,15 @@ body.dark-mode .text-green-label {
         line-height: 1.2;
     }
 
-    /* Watermark Footer */
-    .pdf-footer-watermark {
-        position: absolute;
-        bottom: 5px;
-        left: 4mm;
-        right: 4mm;
+    /* Watermark Footer for Proforma (Single Page) */
+    #printableProforma .pdf-footer-watermark {
+        position: absolute !important;
+        bottom: 5px !important;
+        left: 4mm !important;
+        right: 4mm !important;
         text-align: center;
-        border-top: 1px solid #e5e7eb;
-        padding-top: 3px;
+        border-top: 1px solid #e5e7eb !important;
+        padding-top: 3px !important;
     }
 
     .pdf-footer-watermark p {
@@ -2236,13 +2246,41 @@ body.dark-mode .text-green-label {
         margin: 0;
     }
 
+    /* Watermark Footer for Product List (Repeating on every page) */
+    body.print-products #printableProductList-watermark {
+        display: block !important;
+        position: fixed !important;
+        bottom: 8mm !important;
+        left: 10mm !important;
+        right: 10mm !important;
+        text-align: center;
+        border-top: 1px solid #cbd5e1 !important;
+        padding-top: 4px !important;
+        background-color: white !important;
+        z-index: 9999 !important;
+    }
+
+    body.print-products #printableProductList-watermark p {
+        font-size: 6.4pt;
+        color: #9ca3af;
+        font-style: italic;
+        margin: 0;
+    }
+
+    /* Table spacer for printing */
+    .pdf-print-spacer-row td {
+        height: 18mm !important;
+        border: none !important;
+        background: transparent !important;
+        padding: 0 !important;
+    }
+
     /* Avoid page breaking issues */
     .pdf-header, 
     .pdf-meta-grid, 
     .pdf-tables-grid, 
     .pdf-summary-container, 
-    .pdf-footer-grid,
-    .pdf-footer-watermark {
+    .pdf-footer-grid {
         page-break-inside: avoid;
         break-inside: avoid;
     }
