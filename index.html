@@ -74,8 +74,8 @@
             <div class="container">
                 <!-- Hero Section -->
                 <section class="hero">
-                    <h1>Calculadora de Precio de Importación</h1>
-                    <p>Optimice sus operaciones de importación en Perú. Distribuya fletes, seguros y gastos locales de despacho aduanero automáticamente.</p>
+                    <h1>Calculadora de Precio Unitario en Importación</h1>
+                    <p>Optimice sus calculos de precios de importancion definitiva. Obten el precio unitario de importación para todos sus productos de manera automatica puestos en el almacen de Perú.</p>
                 </section>
 
                 <!-- TAB 1: CALCULADORA CLIENTE -->
@@ -372,24 +372,31 @@
                     </div>
                 </div>
 
-                <!-- Inputs Informativos / Base del Prorrateo -->
+                <!-- Datos Generales y Valores Base de la Proforma -->
                 <div class="form-section-card" style="margin-bottom: 24px;">
-                    <h3 class="form-section-title"><i class="fa-solid fa-scale-balanced"></i> Valores Base</h3>
-                    <div class="form-row three-cols">
+                    <h3 class="form-section-title"><i class="fa-solid fa-file-invoice-dollar"></i> Datos Generales de la Proforma</h3>
+                    <div class="form-row two-cols" style="margin-bottom: 20px;">
+                        <div class="form-group">
+                            <label for="prodCliente"><i class="fa-solid fa-user"></i> Nombre del Cliente</label>
+                            <input type="text" id="prodCliente" placeholder="Ingrese Nombre del Cliente">
+                        </div>
+                        <div class="form-group">
+                            <label for="prodTotalEXW" style="opacity: 0.85;"><i class="fa-solid fa-dollar-sign"></i> Total precio en el extranjero FOB (USD)</label>
+                            <input type="number" id="prodTotalEXW" value="0.00" disabled style="background-color: var(--border-color); font-weight: 700; color: var(--text-main);">
+                            <span class="input-info-text"><i class="fa-solid fa-circle-info"></i> Suma de precio TOTAL de productos</span>
+                        </div>
+                    </div>
+                    
+                    <div class="form-row two-cols" style="border-top: 1px dashed var(--border-color); padding-top: 20px;">
                         <div class="form-group">
                             <label for="prodTotalImpuestos"><i class="fa-solid fa-building-columns"></i> Total Impuestos Aduana (USD)</label>
                             <input type="number" id="prodTotalImpuestos" min="0" step="0.01" value="" oninput="recalculateProducts()">
                             <span class="input-info-text"><i class="fa-solid fa-circle-info"></i> Sincronizado de pestaña 1</span>
                         </div>
                         <div class="form-group">
-                            <label for="prodTotalServicios"><i class="fa-solid fa-truck-flatbed"></i> Total Servicios Logísticos (USD)</label>
+                            <label for="prodTotalServicios"><i class="fa-solid fa-truck-flatbed"></i> Total Servicios Logísticos + Flete Internacional (USD)</label>
                             <input type="number" id="prodTotalServicios" min="0" step="0.01" value="" oninput="recalculateProducts()">
                             <span class="input-info-text"><i class="fa-solid fa-circle-info"></i> Sincronizado de pestaña 1</span>
-                        </div>
-                        <div class="form-group">
-                            <label for="prodTotalEXW" style="opacity: 0.85;"><i class="fa-solid fa-dollar-sign"></i> Total EXW Calculado (USD)</label>
-                            <input type="number" id="prodTotalEXW" value="0.00" disabled style="background-color: var(--border-color); font-weight: 700; color: var(--text-main);">
-                            <span class="input-info-text"><i class="fa-solid fa-circle-info"></i> Suma de AMOUNT de productos</span>
                         </div>
                     </div>
                 </div>
@@ -423,9 +430,9 @@
                                 <th style="padding: 12px 10px; width: 60px; text-align: center;">Nro.</th>
                                 <th style="padding: 12px 10px;">Descripción</th>
                                 <th style="padding: 12px 10px; width: 110px; text-align: right;">Cantidad (QTY)</th>
-                                <th style="padding: 12px 10px; width: 140px; text-align: right;">EXW Unitario (USD)</th>
-                                <th style="padding: 12px 10px; width: 140px; text-align: right;">Total EXW (USD)</th>
-                                <th style="padding: 12px 10px; width: 200px; text-align: right; background-color: rgba(16, 185, 129, 0.2); color: var(--table-header-text);">Precio Unitario Almacén (USD)</th>
+                                <th style="padding: 12px 10px; width: 140px; text-align: right;">Precio FOB Unitario(USD)</th>
+                                <th style="padding: 12px 10px; width: 140px; text-align: right;">Total precio FOB (USD)</th>
+                                <th style="padding: 12px 10px; width: 200px; text-align: right; background-color: rgba(16, 185, 129, 0.2); color: var(--table-header-text);">Precio Unitario en Almacén de importador (USD)</th>
                                 <th style="padding: 12px 10px; width: 90px; text-align: right;">Acciones</th>
                             </tr>
                         </thead>
@@ -1185,11 +1192,12 @@
             <thead>
                 <tr style="border-bottom: 2px solid #dc2626;">
                     <th style="padding: 4px; width: 40px; text-align: center; font-size: 6.8pt;">No.</th>
-                    <th style="padding: 4px; font-size: 6.8pt;">Descripción</th>
-                    <th style="padding: 4px; width: 70px; text-align: right; font-size: 6.8pt;">Cant.</th>
-                    <th style="padding: 4px; width: 90px; text-align: right; font-size: 6.8pt;">EXW Unit (USD)</th>
-                    <th style="padding: 4px; width: 90px; text-align: right; font-size: 6.8pt;">Total EXW (USD)</th>
-                    <th style="padding: 4px; width: 120px; text-align: right; background-color: #f0fdf4; font-size: 7.2pt; font-weight: 700; -webkit-print-color-adjust: exact; print-color-adjust: exact;">Unit. Almacén (USD)</th>
+                    <!--<th style="padding: 4px; font-size: 6.8pt;">Descripción</th> -->
+                    <th style="padding: 4px; width: 100px; text-align: right; font-size: 6.8pt;">Descripción</th>
+                    <th style="padding: 4px; width: 75px; text-align: right; font-size: 6.8pt;">Cant.</th>
+                    <th style="padding: 4px; width: 95px; text-align: right; font-size: 6.8pt;">Precio FOB Unitario (USD)</th>
+                    <th style="padding: 4px; width: 95px; text-align: right; font-size: 6.8pt;">Total precio FOB (USD)</th>
+                    <th style="padding: 4px; width: 100px; text-align: right; background-color: #f0fdf4; font-size: 7.2pt; font-weight: 700; -webkit-print-color-adjust: exact; print-color-adjust: exact;">Unit. Almacén (USD)</th>
                 </tr>
             </thead>
             <tbody id="pdfProductsTableBody">
@@ -1208,7 +1216,7 @@
 
         <!-- Watermark/Footer -->
         <div class="pdf-footer-watermark" style="position: absolute; bottom: 5px; left: 4mm; right: 4mm; text-align: center;">
-            <p>Reporte generado por MsiCalc - MSI ADUANAS PERU CARGO S.A.C.</p>
+            <p>Reporte generado por MSI ADUANAS PERU CARGO S.A.C.</p>
         </div>
     </div>
 

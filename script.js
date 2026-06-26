@@ -54,6 +54,18 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
+    // Sync client names between Tab 1 (Individual) and Tab 2 (Products)
+    const indClienteEl = document.getElementById("indCliente");
+    const prodClienteEl = document.getElementById("prodCliente");
+    if (indClienteEl && prodClienteEl) {
+        indClienteEl.addEventListener("input", () => {
+            prodClienteEl.value = indClienteEl.value;
+        });
+        prodClienteEl.addEventListener("input", () => {
+            indClienteEl.value = prodClienteEl.value;
+        });
+    }
+
     // Bind event listeners to Admin inputs
     adminInputIds.forEach(id => {
         const el = document.getElementById(id);
@@ -869,6 +881,7 @@ function loadQuoteFromHistory(idx) {
     const q = history[idx];
     if (q) {
         if (document.getElementById("indCliente")) document.getElementById("indCliente").value = q.cliente;
+        if (document.getElementById("prodCliente")) document.getElementById("prodCliente").value = q.cliente;
         if (document.getElementById("indProducto")) document.getElementById("indProducto").value = q.producto;
         if (document.getElementById("indValorMercancia")) document.getElementById("indValorMercancia").value = q.valorMercancia;
         if (document.getElementById("indPeso")) document.getElementById("indPeso").value = q.peso;
@@ -1140,6 +1153,7 @@ function clearClientFields() {
         () => {
             const fields = {
                 indCliente: "",
+                prodCliente: "",
                 indProducto: "",
                 indValorMercancia: "",
                 indPeso: "",
@@ -1192,6 +1206,13 @@ function loadProducts() {
 function syncTotalsFromCalculator() {
     const taxesText = document.getElementById("resPillImpuestos").textContent || "$ 0.00";
     const servicesText = document.getElementById("resPillServicios").textContent || "$ 0.00";
+    
+    // Sync client name
+    const clientVal = document.getElementById("indCliente").value.trim();
+    const prodClienteEl = document.getElementById("prodCliente");
+    if (prodClienteEl) {
+        prodClienteEl.value = clientVal;
+    }
     
     const cleanNumber = (text) => {
         return parseFloat(text.replace(/[^0-9.-]/g, "")) || 0;
@@ -1354,6 +1375,13 @@ function clearProductsTable() {
         () => {
             productItems = [];
             localStorage.setItem("msiProductItems", JSON.stringify(productItems));
+            
+            // Also clear client name
+            const prodClienteEl = document.getElementById("prodCliente");
+            if (prodClienteEl) prodClienteEl.value = "";
+            const indClienteEl = document.getElementById("indCliente");
+            if (indClienteEl) indClienteEl.value = "";
+            
             recalculateProducts();
             showToast("Tabla Limpiada", "Se eliminaron todos los productos de la tabla.", "info");
         }
@@ -1550,7 +1578,9 @@ function exportExcelProducts() {
     ws_data.push(row3);
     
     const row4 = [];
-    const clientVal = document.getElementById("indCliente").value.trim() || "Cliente";
+    const prodClientEl = document.getElementById("prodCliente");
+    const indClientEl = document.getElementById("indCliente");
+    const clientVal = (prodClientEl ? prodClientEl.value.trim() : "") || (indClientEl ? indClientEl.value.trim() : "") || "Cliente";
     row4[0] = `Cliente: ${clientVal} | Reporte de Precios Unitarios de Importación`;
     ws_data.push(row4);
     
@@ -1558,10 +1588,10 @@ function exportExcelProducts() {
         "No.", 
         "DESCRIPTION", 
         "Product Image", 
-        "QTY", 
-        "EXW(USD)", 
-        "AMOUNT", 
-        "PRECIO UNITARIO", 
+        "CANTIDAD", 
+        "PRECIO FOB UNITARIO(USD)", 
+        "TOTAL PRECIO FOB(USD)", 
+        "PRECIO UNITARIO EN ALMACEN DEL IMPORTADOR", 
         "IMPUESTOS", 
         "SERVICIOS LOGISTICOS", 
         "PRECIO TOTAL", 
@@ -1768,7 +1798,9 @@ function printProductsPdf() {
     
     document.getElementById("pdfFechaProd").textContent = formatDate(today);
     
-    const clientVal = document.getElementById("indCliente").value.trim() || "Cliente";
+    const prodClientEl = document.getElementById("prodCliente");
+    const indClientEl = document.getElementById("indCliente");
+    const clientVal = (prodClientEl ? prodClientEl.value.trim() : "") || (indClientEl ? indClientEl.value.trim() : "") || "Cliente";
     document.getElementById("pdfClienteNombreProd").textContent = clientVal;
     
     const totalTaxes = parseFloat(document.getElementById("prodTotalImpuestos").value) || 0;
