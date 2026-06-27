@@ -54,17 +54,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
-    // Sync client names between Tab 1 (Individual) and Tab 2 (Products)
-    const indClienteEl = document.getElementById("indCliente");
-    const prodClienteEl = document.getElementById("prodCliente");
-    if (indClienteEl && prodClienteEl) {
-        indClienteEl.addEventListener("input", () => {
-            prodClienteEl.value = indClienteEl.value;
-        });
-        prodClienteEl.addEventListener("input", () => {
-            indClienteEl.value = prodClienteEl.value;
-        });
-    }
+    // Client names between Tab 1 (Individual) and Tab 2 (Products) are kept independent.
 
     // Bind event listeners to Admin inputs
     adminInputIds.forEach(id => {
@@ -334,7 +324,7 @@ function calculateIndividual() {
 
     // Read and update customizable PDF details from Admin Panel
     const pdfEmpresa = document.getElementById("admPdfEmpresa") ? document.getElementById("admPdfEmpresa").value : "MSI ADUANAS PERU CARGO S.A.C.";
-    const pdfSub1 = document.getElementById("admPdfSub1") ? document.getElementById("admPdfSub1").value : "RUC: 20608934571 | Av. Elmer Faucett 150, Callao - Perú";
+    const pdfSub1 = document.getElementById("admPdfSub1") ? document.getElementById("admPdfSub1").value : "RUC: 20609799316 | Av. Elmer Faucett 150, Callao - Perú";
     const pdfSub2 = document.getElementById("admPdfSub2") ? document.getElementById("admPdfSub2").value : "Contacto: cotizaciones@msicargo.com | Tel: (01) 451-9988";
     const pdfBancoSoles = document.getElementById("admPdfBancoSoles") ? document.getElementById("admPdfBancoSoles").value : "191-9897990-0-94";
     const pdfBancoSolesCci = document.getElementById("admPdfBancoSolesCci") ? document.getElementById("admPdfBancoSolesCci").value : "002-19100989799009455";
@@ -899,7 +889,6 @@ function loadQuoteFromHistory(idx) {
     const q = history[idx];
     if (q) {
         if (document.getElementById("indCliente")) document.getElementById("indCliente").value = q.cliente;
-        if (document.getElementById("prodCliente")) document.getElementById("prodCliente").value = q.cliente;
         if (document.getElementById("indProducto")) document.getElementById("indProducto").value = q.producto;
         if (document.getElementById("indValorMercancia")) document.getElementById("indValorMercancia").value = q.valorMercancia;
         if (document.getElementById("indPeso")) document.getElementById("indPeso").value = q.peso;
@@ -1171,7 +1160,6 @@ function clearClientFields() {
         () => {
             const fields = {
                 indCliente: "",
-                prodCliente: "",
                 indProducto: "",
                 indValorMercancia: "",
                 indPeso: "",
@@ -1225,12 +1213,7 @@ function syncTotalsFromCalculator() {
     const taxesText = document.getElementById("resPillImpuestos").textContent || "$ 0.00";
     const servicesText = document.getElementById("resPillServicios").textContent || "$ 0.00";
     
-    // Sync client name
-    const clientVal = document.getElementById("indCliente").value.trim();
-    const prodClienteEl = document.getElementById("prodCliente");
-    if (prodClienteEl) {
-        prodClienteEl.value = clientVal;
-    }
+    // Client name in products tab is independent and not synchronized from the calculator
     
     const cleanNumber = (text) => {
         return parseFloat(text.replace(/[^0-9.-]/g, "")) || 0;
@@ -1394,11 +1377,9 @@ function clearProductsTable() {
             productItems = [];
             localStorage.setItem("msiProductItems", JSON.stringify(productItems));
             
-            // Also clear client name
+            // Also clear client name for products only
             const prodClienteEl = document.getElementById("prodCliente");
             if (prodClienteEl) prodClienteEl.value = "";
-            const indClienteEl = document.getElementById("indCliente");
-            if (indClienteEl) indClienteEl.value = "";
             
             recalculateProducts();
             showToast("Tabla Limpiada", "Se eliminaron todos los productos de la tabla.", "info");
@@ -1597,9 +1578,8 @@ function exportExcelProducts() {
     
     const row4 = [];
     const prodClientEl = document.getElementById("prodCliente");
-    const indClientEl = document.getElementById("indCliente");
-    const clientVal = (prodClientEl ? prodClientEl.value.trim() : "") || (indClientEl ? indClientEl.value.trim() : "") || "Cliente";
-    row4[0] = `Cliente: ${clientVal} | Reporte de Precios Unitarios de Importación`;
+    const clientVal = prodClientEl ? prodClientEl.value.trim() : "";
+    row4[0] = clientVal ? `Cliente: ${clientVal} | Reporte de Precios Unitarios de Importación` : `Reporte de Precios Unitarios de Importación`;
     ws_data.push(row4);
     
     const headers = [
@@ -1801,7 +1781,7 @@ function exportExcelProducts() {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Table 1");
     
-    const filename = `Precio_Unitario_Productos_${clientVal.replace(/\s+/g, "_")}.xlsx`;
+    const filename = clientVal ? `Precio_Unitario_Productos_${clientVal.replace(/\s+/g, "_")}.xlsx` : `Precio_Unitario_Productos.xlsx`;
     XLSX.writeFile(wb, filename);
 }
 
@@ -1817,8 +1797,7 @@ function printProductsPdf() {
     document.getElementById("pdfFechaProd").textContent = formatDate(today);
     
     const prodClientEl = document.getElementById("prodCliente");
-    const indClientEl = document.getElementById("indCliente");
-    const clientVal = (prodClientEl ? prodClientEl.value.trim() : "") || (indClientEl ? indClientEl.value.trim() : "") || "Cliente";
+    const clientVal = prodClientEl ? prodClientEl.value.trim() : "";
     document.getElementById("pdfClienteNombreProd").textContent = clientVal;
     
     const totalTaxes = parseFloat(document.getElementById("prodTotalImpuestos").value) || 0;
@@ -1858,7 +1837,7 @@ function printProductsPdf() {
     }
     
     const pdfEmpresa = document.getElementById("admPdfEmpresa") ? document.getElementById("admPdfEmpresa").value : "MSI ADUANAS PERU CARGO S.A.C.";
-    const pdfSub1 = document.getElementById("admPdfSub1") ? document.getElementById("admPdfSub1").value : "RUC: 20608934571 | Av. Elmer Faucett 150, Callao - Perú";
+    const pdfSub1 = document.getElementById("admPdfSub1") ? document.getElementById("admPdfSub1").value : "RUC: 20609799316 | Av. Elmer Faucett 150, Callao - Perú";
     const pdfSub2 = document.getElementById("admPdfSub2") ? document.getElementById("admPdfSub2").value : "Contacto: cotizaciones@msicargo.com | Tel: (01) 451-9988";
     
     if (document.getElementById("pdfEmpresaNombreProd")) document.getElementById("pdfEmpresaNombreProd").textContent = pdfEmpresa;
@@ -1875,8 +1854,8 @@ function printProductsPdf() {
     const clientClean = sanitizeFilename(clientVal);
     const originalTitle = document.title;
     
-    let docTitle = ` `;
-    if (clientClean && clientClean !== "Cliente") {
+    let docTitle = `Precio_Unitario_Productos`;
+    if (clientClean) {
         docTitle += `_${clientClean}`;
     }
     document.title = docTitle;
