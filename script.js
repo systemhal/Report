@@ -1604,8 +1604,8 @@ function exportExcelProducts() {
     
     const headers = [
         "No.", 
-        "DESCRIPTION", 
-        "Product Image", 
+        "DESCRIPCIÓN", 
+        "IMAGEN PRODUCTO", 
         "CANTIDAD", 
         "PRECIO FOB UNITARIO(USD)", 
         "TOTAL PRECIO FOB(USD)", 
